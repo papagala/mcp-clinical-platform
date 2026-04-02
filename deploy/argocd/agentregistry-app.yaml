@@ -20,6 +20,8 @@ spec:
           enableAnonymousAuth: "true"
           # Disable builtin seed to keep catalog clean for demo
           disableBuiltinSeed: "true"
+          # JWT signing key for local demo (hex-encoded)
+          jwtPrivateKey: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
         service:
           type: ClusterIP
         # Lighter resources for Kind
@@ -32,6 +34,8 @@ spec:
             memory: 512Mi
         database:
           postgres:
+            # Disable pgvector — bundled postgres doesn't have it
+            vectorEnabled: false
             bundled:
               enabled: true
               storage: 1Gi
