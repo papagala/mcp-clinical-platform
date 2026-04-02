@@ -38,6 +38,12 @@ spec:
             vectorEnabled: false
             bundled:
               enabled: true
+              image:
+                # Use pgvector-enabled postgres image (migration requires CREATE EXTENSION vector)
+                registry: docker.io
+                repository: pgvector
+                name: pgvector
+                tag: "pg18"
               storage: 1Gi
               resources:
                 requests:
