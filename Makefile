@@ -2,18 +2,18 @@
 # =============================================================================
 # QUICK START:
 #   export OPENAI_API_KEY=sk-your-key
-#   make create     → Kind cluster + ArgoCD + kagent + m3 (full GitOps deploy)
+#   make create     → Kind cluster + ArgoCD + kagent + m3 + agentregistry (full GitOps deploy)
 #   make ports      → Start all port-forwards
-#   make gateway    → Start agentgateway (federates kagent + m3 MCP servers)
+#   make gateway    → Start agentgateway (federates kagent + m3 + agentregistry MCP servers)
 #   make demo       → Show demo curl commands
 #   make stop       → Stop port-forwards + gateway
 #   make destroy    → Tear down cluster
 # =============================================================================
 
 .PHONY: create destroy demo demo-script ports stop status help gateway logs \
-        create-cluster install-argocd deploy-kagent deploy-m3 \
+        create-cluster install-argocd deploy-kagent deploy-m3 deploy-agentregistry \
         apply-agent-resources \
-        _check-prereqs _create-secrets _wait-kagent _wait-m3
+        _check-prereqs _create-secrets _wait-kagent _wait-m3 _wait-agentregistry
 
 CLUSTER_NAME   := mcp-clinical
 NAMESPACE      := kagent
@@ -27,8 +27,8 @@ export
 # 🚀 MAIN COMMANDS
 # =============================================================================
 
-## Full setup: cluster + ArgoCD + kagent + m3 + agent resources
-create: _check-prereqs create-cluster install-argocd _create-secrets deploy-kagent deploy-m3 _wait-kagent _wait-m3 apply-agent-resources
+## Full setup: cluster + ArgoCD + kagent + m3 + agentregistry + agent resources
+create: _check-prereqs create-cluster install-argocd _create-secrets deploy-kagent deploy-m3 deploy-agentregistry _wait-kagent _wait-m3 _wait-agentregistry apply-agent-resources
 	@echo ""
 	@echo "============================================"
 	@echo "✅ MCP Clinical Platform is ready!"
@@ -77,6 +77,7 @@ demo:
 	@echo "6️⃣  UIs:"
 	@echo "   open http://localhost:15000/ui   # agentgateway playground"
 	@echo "   open http://localhost:8090       # kagent dashboard"
+	@echo "   open http://localhost:12121      # agentregistry catalog"
 	@echo "   open https://localhost:8080      # ArgoCD"
 	@echo ""
 	@echo "7️⃣  VS Code: copy .vscode/mcp.json to your project"
@@ -103,12 +104,18 @@ ports:
 	@kubectl port-forward svc/m3 -n $(NAMESPACE) 3000:3000 >/dev/null 2>&1 &
 	@echo "   📦 ArgoCD UI    → localhost:8080"
 	@kubectl port-forward svc/argocd-server -n argocd 8080:443 >/dev/null 2>&1 &
+	@echo "   📚 agentregistry UI → localhost:12121"
+	@kubectl port-forward svc/agentregistry -n $(NAMESPACE) 12121:12121 >/dev/null 2>&1 &
+	@echo "   📚 agentregistry MCP → localhost:31313"
+	@kubectl port-forward svc/agentregistry -n $(NAMESPACE) 31313:31313 >/dev/null 2>&1 &
 	@sleep 2
 	@echo ""
 	@echo "✅ Port-forwards running!"
 	@echo "   http://localhost:8083  → kagent MCP (Streamable HTTP)"
 	@echo "   http://localhost:8090  → kagent Dashboard"
 	@echo "   http://localhost:3000  → m3 MCP Server"
+	@echo "   http://localhost:12121 → agentregistry UI"
+	@echo "   http://localhost:31313 → agentregistry MCP"
 	@ARGOCD_PW=$$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d); \
 	echo "   https://localhost:8080 → ArgoCD (admin/$$ARGOCD_PW)"
 	@echo ""
@@ -125,7 +132,7 @@ stop:
 # 🌐 AGENTGATEWAY
 # =============================================================================
 
-## Start agentgateway (federates kagent + m3 MCP servers into :4000)
+## Start agentgateway (federates kagent + m3 + agentregistry MCP servers into :4000)
 gateway:
 	@echo "🌐 Starting agentgateway..."
 	@if ! command -v agentgateway >/dev/null 2>&1; then \
@@ -135,8 +142,9 @@ gateway:
 	@pkill -f "agentgateway" 2>/dev/null || true
 	@sleep 1
 	@echo "   Federating MCP servers:"
-	@echo "     kagent → http://localhost:8083/mcp"
-	@echo "     m3     → http://localhost:3000/mcp"
+	@echo "     kagent        → http://localhost:8083/mcp"
+	@echo "     m3            → http://localhost:3000/mcp"
+	@echo "     agentregistry → http://localhost:31313/mcp"
 	@echo ""
 	@echo "   agentgateway MCP endpoint: http://localhost:4000/"
 	@echo "   agentgateway UI:           http://localhost:15000/ui"
@@ -228,6 +236,21 @@ deploy-m3:
 	done
 	@echo "✅ m3 deployed via ArgoCD!"
 
+## Deploy agentregistry via ArgoCD (GitOps)
+deploy-agentregistry:
+	@echo "📚 Deploying agentregistry via ArgoCD..."
+	@kubectl apply -f deploy/argocd/agentregistry-app.yaml
+	@echo "   Syncing agentregistry application..."
+	@sleep 5
+	@for i in $$(seq 1 30); do \
+		STATUS=$$(kubectl get application agentregistry -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null); \
+		HEALTH=$$(kubectl get application agentregistry -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null); \
+		echo "   [$$i/30] Sync: $$STATUS | Health: $$HEALTH"; \
+		if [ "$$HEALTH" = "Healthy" ]; then break; fi; \
+		sleep 10; \
+	done
+	@echo "✅ agentregistry deployed via ArgoCD!"
+
 ## Apply kagent Agent CRDs (medical-data-agent)
 apply-agent-resources:
 	@echo "🧠 Applying kagent agent resources..."
@@ -274,6 +297,15 @@ _wait-m3:
 		READY=$$(kubectl get pods -n $(NAMESPACE) -l app.kubernetes.io/name=m3 -o jsonpath='{.items[0].status.phase}' 2>/dev/null); \
 		if [ "$$READY" = "Running" ]; then echo "✅ m3 running!"; break; fi; \
 		echo "   [$$i/20] Waiting for m3... ($$READY)"; \
+		sleep 10; \
+	done
+
+_wait-agentregistry:
+	@echo "⏳ Waiting for agentregistry pods..."
+	@for i in $$(seq 1 30); do \
+		READY=$$(kubectl get pods -n $(NAMESPACE) -l app.kubernetes.io/name=agentregistry -o jsonpath='{.items[0].status.phase}' 2>/dev/null); \
+		if [ "$$READY" = "Running" ]; then echo "✅ agentregistry running!"; break; fi; \
+		echo "   [$$i/30] Waiting for agentregistry... ($$READY)"; \
 		sleep 10; \
 	done
 

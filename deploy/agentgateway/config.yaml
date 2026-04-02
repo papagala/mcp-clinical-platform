@@ -1,10 +1,11 @@
 # agentgateway configuration — Federated MCP Gateway
-# Multiplexes kagent and m3 MCP servers into a single endpoint.
+# Multiplexes kagent, m3, and agentregistry MCP servers into a single endpoint.
 # VS Code / Cursor / any MCP client connects to http://localhost:4000/
 #
 # Architecture:
 #   VS Code → agentgateway(:4000) → kagent MCP(:8083/mcp)
 #                                  → m3 MCP(:3000/mcp)
+#                                  → agentregistry MCP(:31313/mcp)
 #
 # Tools exposed (auto-prefixed by target name):
 #   kagent_list_agents      — List all kagent agents
@@ -15,6 +16,7 @@
 #   m3_get_icu_stays        — Get ICU stay data
 #   m3_get_lab_results      — Get lab test results
 #   m3_get_race_distribution — Get race distribution stats
+#   registry_*              — agentregistry catalog tools
 #
 # yaml-language-server: $schema=https://agentgateway.dev/schema/config
 binds:
@@ -40,3 +42,7 @@ binds:
                     - name: m3
                       mcp:
                         host: http://localhost:3000/mcp
+                    # agentregistry MCP — catalog & governance tools
+                    - name: registry
+                      mcp:
+                        host: http://localhost:31313/mcp

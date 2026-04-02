@@ -1,0 +1,54 @@
+# agentregistry ArgoCD Application — MCP server/agent catalog & governance
+# Deploys agentregistry with bundled PostgreSQL for artifact discovery
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: agentregistry
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/agentregistry-dev/agentregistry/charts
+    chart: agentregistry
+    targetRevision: 0.3.3
+    helm:
+      valuesObject:
+        config:
+          # Allow anonymous access for local demo
+          enableAnonymousAuth: "true"
+          # Disable builtin seed to keep catalog clean for demo
+          disableBuiltinSeed: "true"
+        service:
+          type: ClusterIP
+        # Lighter resources for Kind
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        database:
+          postgres:
+            bundled:
+              enabled: true
+              storage: 1Gi
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kagent
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 10
