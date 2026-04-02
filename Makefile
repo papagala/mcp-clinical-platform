@@ -191,7 +191,7 @@ create-cluster:
 install-argocd:
 	@echo "📦 Installing ArgoCD..."
 	@kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-	@kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+	@kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 	@echo "   Waiting for ArgoCD to be ready..."
 	@kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
 	@kubectl wait --for=condition=available deployment/argocd-repo-server -n argocd --timeout=300s
@@ -261,9 +261,9 @@ _create-secrets:
 _wait-kagent:
 	@echo "⏳ Waiting for kagent pods..."
 	@for i in $$(seq 1 30); do \
-		READY=$$(kubectl get pods -n $(NAMESPACE) -l app.kubernetes.io/name=kagent-controller -o jsonpath='{.items[0].status.phase}' 2>/dev/null); \
+		READY=$$(kubectl get pods -n $(NAMESPACE) -l app.kubernetes.io/name=kagent,app.kubernetes.io/component=controller -o jsonpath='{.items[0].status.phase}' 2>/dev/null); \
 		if [ "$$READY" = "Running" ]; then echo "✅ kagent controller running!"; break; fi; \
-		echo "   [$$i/30] Waiting for kagent-controller... ($$READY)"; \
+		echo "   [$$i/30] Waiting for kagent controller... ($$READY)"; \
 		sleep 10; \
 	done
 
