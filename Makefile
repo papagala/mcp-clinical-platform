@@ -253,8 +253,9 @@ _check-prereqs:
 _create-secrets:
 	@echo "🔐 Creating secrets..."
 	@kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
-	@kubectl create secret generic kagent-openai \
-		--from-literal=OPENAI_API_KEY="$$OPENAI_API_KEY" \
+	@CLEAN_KEY=$$(echo $$OPENAI_API_KEY | tr -d '"'); \
+	kubectl create secret generic kagent-openai \
+		--from-literal=OPENAI_API_KEY="$$CLEAN_KEY" \
 		-n $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 	@echo "✅ Secrets created"
 
