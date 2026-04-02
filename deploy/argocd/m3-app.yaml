@@ -12,8 +12,7 @@ metadata:
 spec:
   project: default
   source:
-    # TODO: Change this to your repository URL
-    repoURL: https://github.com/YOUR_USERNAME/mcp-clinical-platform.git
+    repoURL: https://github.com/papagala/mcp-clinical-platform.git
     targetRevision: HEAD
     path: helm-charts/m3
     helm:
