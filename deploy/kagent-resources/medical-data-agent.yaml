@@ -1,0 +1,75 @@
+# Medical Data Agent — queries MIMIC-IV data via m3 MCP tools
+# Exposed via kagent's MCP server endpoint (/mcp) for IDE integration.
+#
+# Two ways to use:
+# 1. Directly: kagent dashboard → chat with medical-data-agent
+# 2. Via MCP: VS Code → agentgateway → kagent_invoke_agent("medical-data-agent", ...)
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: medical-data-agent
+  namespace: kagent
+spec:
+  description: >
+    AI agent for querying MIMIC-IV clinical data. Can answer questions about
+    patient demographics, ICU stays, lab results, and race distribution
+    using the m3 MCP server tools.
+  type: Declarative
+  declarative:
+    modelConfig: default-model-config
+    runtime: go
+    systemMessage: |
+      You are a medical data analyst agent with access to MIMIC-IV clinical database tools.
+      You help healthcare researchers and clinicians query and analyze clinical data.
+
+      # Available Tools
+      You have access to the following MCP tools from the m3 server:
+      - get_database_schema: Discover available tables in MIMIC-IV
+      - get_table_info: Explore table structure and sample data
+      - execute_mimic_query: Run SQL SELECT queries against the database
+      - get_icu_stays: Get ICU stay information for patients
+      - get_lab_results: Get laboratory test results
+      - get_race_distribution: Get race/ethnicity distribution from admissions
+
+      # Instructions
+      - Start by understanding what data the user needs
+      - Use get_database_schema first if you need to explore available tables
+      - Use get_table_info to understand column names before writing queries
+      - For complex questions, use execute_mimic_query with well-formed SQL
+      - For common questions, prefer the convenience tools (get_icu_stays, get_lab_results, get_race_distribution)
+      - Always explain your findings clearly with context about what the data means
+      - If a query fails, check the table/column names and try again
+      - Only SELECT queries are allowed — the database is read-only
+
+      # Response Format
+      - Format responses as Markdown
+      - Include summary statistics when relevant
+      - Explain medical terminology when appropriate
+    tools:
+      # m3 MCP server running as K8s Service with appProtocol: mcp
+      - type: McpServer
+        mcpServer:
+          name: m3
+          kind: Service
+          toolNames:
+            - get_database_schema
+            - get_table_info
+            - execute_mimic_query
+            - get_icu_stays
+            - get_lab_results
+            - get_race_distribution
+    a2aConfig:
+      skills:
+        - id: clinical-data-query
+          name: Clinical Data Query
+          description: Query and analyze MIMIC-IV clinical data including patient demographics, ICU stays, lab results, and admissions data.
+          tags:
+            - healthcare
+            - mimic-iv
+            - clinical-data
+            - sql
+          examples:
+            - "What is the race distribution in ICU admissions?"
+            - "Show me the most common lab tests"
+            - "How many patients have ICU stays longer than 7 days?"
+            - "What tables are available in the database?"

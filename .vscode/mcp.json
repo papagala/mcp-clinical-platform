@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "mcp-clinical-platform": {
+      "type": "http",
+      "url": "http://localhost:4000/"
+    }
+  }
+}
