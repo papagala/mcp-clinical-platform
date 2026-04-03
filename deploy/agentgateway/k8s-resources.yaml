@@ -1,0 +1,65 @@
+# Kubernetes Gateway API + agentgateway resources for MCP federation
+# Deploys agentgateway proxy that federates kagent, m3, and agentregistry MCP servers.
+---
+# Gateway API CRDs must be installed first (done in Makefile _gateway-api target)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway-proxy
+  namespace: agentgateway-system
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - protocol: HTTP
+      port: 80
+      name: http
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Virtual MCP backend — federates all 3 MCP servers
+# Tool names are auto-prefixed: kagent_*, m3_*, registry_*
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: mcp-federation
+  namespace: kagent
+spec:
+  mcp:
+    failureMode: FailOpen
+    targets:
+      - name: kagent
+        static:
+          host: kagent-controller.kagent.svc.cluster.local
+          port: 8083
+          protocol: StreamableHTTP
+      - name: m3
+        static:
+          host: m3.kagent.svc.cluster.local
+          port: 3000
+          protocol: StreamableHTTP
+      - name: registry
+        static:
+          host: agentregistry.kagent.svc.cluster.local
+          port: 31313
+          protocol: StreamableHTTP
+---
+# Route /mcp traffic to the federated backend
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp
+  namespace: kagent
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp
+      backendRefs:
+        - name: mcp-federation
+          group: agentgateway.dev
+          kind: AgentgatewayBackend

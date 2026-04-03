@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "m3.labels" . | nindent 4 }}
+  annotations:
+    agentgateway.dev/mcp-path: "/mcp"
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,6 +14,6 @@ spec:
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
       name: http
-      appProtocol: mcp
+      appProtocol: agentgateway.dev/mcp
   selector:
     {{- include "m3.selectorLabels" . | nindent 4 }}

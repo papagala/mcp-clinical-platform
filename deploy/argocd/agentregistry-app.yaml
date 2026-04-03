@@ -1,0 +1,64 @@
+# agentregistry ArgoCD Application — MCP server/agent catalog & governance
+# Deploys agentregistry with bundled PostgreSQL for artifact discovery
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: agentregistry
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/agentregistry-dev/agentregistry/charts
+    chart: agentregistry
+    targetRevision: 0.3.3
+    helm:
+      valuesObject:
+        config:
+          # Allow anonymous access for local demo
+          enableAnonymousAuth: "true"
+          # Disable builtin seed to keep catalog clean for demo
+          disableBuiltinSeed: "true"
+          # JWT signing key for local demo (hex-encoded)
+          jwtPrivateKey: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+        service:
+          type: ClusterIP
+        # Lighter resources for Kind
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        database:
+          postgres:
+            # Disable pgvector — bundled postgres doesn't have it
+            vectorEnabled: false
+            bundled:
+              enabled: true
+              image:
+                # Use pgvector-enabled postgres image (migration requires CREATE EXTENSION vector)
+                registry: docker.io
+                repository: pgvector
+                name: pgvector
+                tag: "pg18"
+              storage: 1Gi
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kagent
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 10
