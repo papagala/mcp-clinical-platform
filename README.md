@@ -1,11 +1,12 @@
 # MCP Clinical Platform
 
-> **MCP_HACK//26 Submission** — Federated MCP servers on Kubernetes: a medical data AI agent platform combining kagent, agentgateway, and m3, deployed via ArgoCD GitOps.
+> **MCP_HACK//26 Submission** — Federated MCP servers on Kubernetes: a medical data AI agent platform combining kagent, kgateway (agentgateway), m3, and agentregistry — fully deployed via ArgoCD GitOps.
 
 <div align="center">
 
 [![kagent](https://img.shields.io/badge/kagent-v0.8.3-blue?style=for-the-badge)](https://kagent.dev/)
-[![agentgateway](https://img.shields.io/badge/agentgateway-v1.0-green?style=for-the-badge)](https://agentgateway.dev/)
+[![kgateway](https://img.shields.io/badge/kgateway-v1.0.1-green?style=for-the-badge)](https://agentgateway.dev/)
+[![agentregistry](https://img.shields.io/badge/agentregistry-v0.3.3-orange?style=for-the-badge)](https://agentregistry.dev/)
 [![MCP](https://img.shields.io/badge/MCP-Streamable_HTTP-purple?style=for-the-badge)](https://modelcontextprotocol.io/)
 [![ArgoCD](https://img.shields.io/badge/ArgoCD-GitOps-EF7B4D?style=for-the-badge&logo=argo&logoColor=white)](https://argoproj.github.io/argo-cd/)
 [![Kind](https://img.shields.io/badge/Kind-K8s-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kind.sigs.k8s.io/)
@@ -19,25 +20,30 @@
 ```
  "What is the race distribution in ICU admissions?"
 
- ┌─────────────┐     ┌──────────────────┐     ┌────────────────────┐
- │  VS Code    │────▶│  agentgateway    │────▶│  kagent (/mcp)     │
- │  Cursor     │     │  :4000           │     │  list_agents       │
- │  Claude     │     │  MCP federation  │     │  invoke_agent      │
- └─────────────┘     │                  │     └────────────────────┘
-                     │                  │
-                     │                  │     ┌────────────────────┐
-                     │                  │────▶│  m3 MCP server     │
-                     └──────────────────┘     │  :3000             │
-                                              │  6 clinical tools  │
-                                              │  MIMIC-IV + DuckDB │
-                                              └────────────────────┘
+ ┌─────────────┐     ┌──────────────────────────┐     ┌────────────────────┐
+ │  VS Code    │────▶│  kgateway (agentgateway)  │────▶│  kagent (/mcp)     │
+ │  Cursor     │     │  K8s Gateway API          │     │  list_agents       │
+ │  Claude     │     │  /mcp endpoint            │     │  invoke_agent      │
+ └─────────────┘     │                          │     └────────────────────┘
+                     │                          │
+                     │                          │     ┌────────────────────┐
+                     │                          │────▶│  m3 MCP server     │
+                     │                          │     │  6 clinical tools  │
+                     │                          │     │  MIMIC-IV + DuckDB │
+                     │                          │     └────────────────────┘
+                     │                          │
+                     │                          │     ┌────────────────────┐
+                     │                          │────▶│  agentregistry     │
+                     └──────────────────────────┘     │  12 registry tools │
+                                                      │  K8s discovery     │
+                                                      └────────────────────┘
 
  → "WHITE: 41,266 (54.8%), BLACK/AFRICAN AMERICAN: 13,197 (17.5%)..."
 ```
 
-**One MCP endpoint. Two servers. Six medical data tools. All from your IDE.**
+**One MCP endpoint. Three servers. 22 federated tools. All from your IDE.**
 
-agentgateway federates kagent (AI agent orchestration) and m3 (MIMIC-IV clinical data) into a single MCP endpoint. VS Code, Cursor, or any MCP client connects once and gets access to everything.
+kgateway (agentgateway on Kubernetes) federates kagent (AI agent orchestration), m3 (MIMIC-IV clinical data), and agentregistry (service discovery) into a single `/mcp` endpoint. Everything runs in-cluster — no local binaries needed.
 
 ---
 
@@ -48,24 +54,21 @@ agentgateway federates kagent (AI agent orchestration) and m3 (MIMIC-IV clinical
 brew install kind kubectl helm
 
 # 1. Clone and configure
-git clone https://github.com/YOUR_USERNAME/mcp-clinical-platform.git
+git clone https://github.com/papagala/mcp-clinical-platform.git
 cd mcp-clinical-platform
 export OPENAI_API_KEY=sk-your-key
 
-# 2. Deploy everything (Kind + ArgoCD + kagent + m3)
+# 2. Deploy everything (Kind + ArgoCD + kagent + m3 + kgateway + agentregistry)
 make create
 
-# 3. Start port-forwards
+# 3. Start port-forwards (including kgateway proxy → localhost:4000)
 make ports
 
-# 4. Start agentgateway (new terminal)
-make gateway
-
-# 5. Run the demo
+# 4. Run the demo
 make demo
 ```
 
-That's it. Five commands from zero to a working federated MCP platform.
+That's it. Three commands from zero to a working federated MCP platform.
 
 ---
 
@@ -178,10 +181,13 @@ Walks through each step with explanations and pauses.
 | Decision | Why |
 |----------|-----|
 | **ArgoCD** over `kubectl apply` | GitOps = self-healing, audit trail, drift detection |
-| **agentgateway federation** | One endpoint for all MCP servers = simpler client config |
+| **kgateway on K8s** over local binary | Fully in-cluster, no host dependencies, Gateway API native |
+| **agentgateway federation** | One `/mcp` endpoint for all MCP servers = simpler client config |
+| **agentregistry** | Service discovery catalog — tracks all deployed MCP servers, agents, and skills |
 | **kagent as MCP server** | v0.8+ exposes agents via `/mcp` — any IDE can invoke them |
 | **m3 with `appProtocol: mcp`** | K8s-native MCP discovery — kagent auto-connects |
 | **Go runtime** for agent | 2s startup vs 15s Python — great for demo responsiveness |
+| **Custom VS Code agent** | `.agent.md` gives clinicians a dedicated chat persona for data queries |
 | **Kind cluster** | Works on any machine, no cloud account needed |
 
 ---
@@ -190,20 +196,23 @@ Walks through each step with explanations and pauses.
 
 ### 🤖 Building Cool Agents (Primary)
 - `medical-data-agent`: kagent Agent CRD querying MIMIC-IV clinical data via MCP
+- **Clinical Analyst** custom VS Code agent (`.github/agents/clinical-analyst.agent.md`) for IDE-native clinical queries
 - Uses Go runtime for fast cold starts
 - Demonstrates kagent's K8s Service discovery for MCP servers (`appProtocol: mcp`)
-- Real clinical data — not a toy example
+- Real clinical data from [m3](https://github.com/rafiattrach/m3) — not a toy example
+- Demo notebook with agent-driven cohort analysis and publication-quality visualizations
 
 ### 🚀 MCP & AI Agents Starter Track
-- Complete from-zero tutorial: 5 commands to a working platform
+- Complete from-zero tutorial: 3 commands to a working platform
 - Each Makefile target is idempotent and documented
-- VS Code integration shows practical developer workflow
-- Interactive demo script for step-by-step learning
+- VS Code integration with custom agent shows practical developer workflow
+- Demo notebook for step-by-step learning
 
 ### 🛡️ Secure & Govern MCP
-- All agent-tool traffic flows through agentgateway (single auditable proxy)
-- CORS policy, MCP session management, and routing built in
-- Ready for JWT auth and RBAC policy extension (documented below)
+- All agent-tool traffic flows through kgateway (single auditable K8s-native proxy)
+- Gateway API resources (Gateway, AgentgatewayBackend, HTTPRoute) for declarative routing
+- agentregistry provides service/agent/skill catalog with K8s discovery
+- Ready for JWT auth and RBAC policy extension
 
 ---
 
@@ -211,30 +220,37 @@ Walks through each step with explanations and pauses.
 
 ```
 mcp-clinical-platform/
-├── Makefile                              # Main orchestration
+├── Makefile                              # Main orchestration (create/destroy/ports/demo)
 ├── README.md                             # ← you are here
-├── .env.template                         # Environment template
+├── pyproject.toml                        # Python deps (pandas, matplotlib, requests)
 ├── .vscode/
-│   └── mcp.json                          # VS Code MCP client config
+│   └── mcp.json                          # VS Code MCP client → localhost:4000/mcp
+├── .github/
+│   └── agents/
+│       └── clinical-analyst.agent.md     # Custom VS Code agent for clinical queries
+├── demo/
+│   └── lactate_cohort_analysis.ipynb     # Live demo notebook (agent → data → plots)
 ├── deploy/
-│   ├── demo.sh                           # Interactive demo script
 │   ├── kind/
 │   │   └── cluster-config.yaml           # Kind cluster config
 │   ├── argocd/
-│   │   ├── kagent-app.yaml               # kagent ArgoCD Application (v0.8.3)
-│   │   └── m3-app.yaml                   # m3 ArgoCD Application
-│   ├── kagent-resources/
-│   │   ├── modelconfig.yaml              # OpenAI LLM provider config
-│   │   └── medical-data-agent.yaml       # Agent CRD with m3 MCP tools
-│   └── agentgateway/
-│       └── config.yaml                   # MCP federation config
+│   │   ├── kagent-app.yaml               # kagent v0.8.3 (multi-source: CRDs + chart)
+│   │   ├── m3-app.yaml                   # m3 v0.0.3
+│   │   ├── agentgateway-crds-app.yaml    # kgateway CRDs v1.0.1 (ServerSideApply)
+│   │   ├── agentgateway-app.yaml         # kgateway control plane v1.0.1
+│   │   └── agentregistry-app.yaml        # agentregistry v0.3.3
+│   ├── agentgateway/
+│   │   └── k8s-resources.yaml            # Gateway + AgentgatewayBackend + HTTPRoute
+│   └── kagent-resources/
+│       ├── modelconfig.yaml              # OpenAI LLM provider config
+│       └── medical-data-agent.yaml       # Agent CRD with m3 MCP tools
 └── helm-charts/
     └── m3/                               # m3 Helm chart (deployed by ArgoCD)
         ├── Chart.yaml
         ├── values.yaml
         └── templates/
             ├── deployment.yaml
-            ├── service.yaml              # appProtocol: mcp
+            ├── service.yaml              # appProtocol: agentgateway.dev/mcp
             ├── configmap.yaml
             ├── namespace.yaml
             ├── pvc.yaml
@@ -247,19 +263,8 @@ mcp-clinical-platform/
 
 ### Add another MCP server
 1. Deploy to cluster (Helm chart + ArgoCD Application)
-2. Add as target in `deploy/agentgateway/config.yaml`
-3. Restart agentgateway — new tools appear automatically
-
-### Add RBAC to agentgateway
-```yaml
-# deploy/agentgateway/config.yaml — add to route policies
-policies:
-  auth:
-    - type: jwt
-      jwt:
-        issuer: https://your-idp.com
-        audience: agentgateway
-```
+2. Add as a static target in `deploy/agentgateway/k8s-resources.yaml` (AgentgatewayBackend)
+3. The new tools appear automatically through the federated `/mcp` endpoint
 
 ### Create a new kagent agent
 ```yaml
@@ -293,11 +298,33 @@ It's immediately available via kagent's `/mcp` endpoint and through agentgateway
 | Tech | Version | Role | Project |
 |------|---------|------|---------|
 | [kagent](https://kagent.dev) | v0.8.3 | K8s-native AI agent framework | CNCF |
-| [agentgateway](https://agentgateway.dev) | v1.0+ | MCP federation proxy | Linux Foundation |
+| [kgateway / agentgateway](https://agentgateway.dev) | v1.0.1 | MCP federation proxy on K8s (Gateway API) | Linux Foundation |
 | [m3](https://github.com/rafiattrach/m3) | v0.0.3 | MIMIC-IV clinical data MCP server | — |
+| [agentregistry](https://agentregistry.dev) | v0.3.3 | MCP server/agent/skill registry | — |
 | [ArgoCD](https://argoproj.github.io/argo-cd/) | stable | GitOps continuous delivery | CNCF |
+| [Gateway API](https://gateway-api.sigs.k8s.io/) | v1.5.0 | K8s-native routing for kgateway | K8s SIG |
 | [Kind](https://kind.sigs.k8s.io/) | latest | Local Kubernetes cluster | — |
 | [MCP](https://modelcontextprotocol.io/) | Streamable HTTP | Model Context Protocol | Anthropic |
+
+## References
+
+- Al Attrach, R., Moreira, P., Fani, R., Umeton, R., & Celi, L. A. (2025). *Conversational LLMs Simplify Secure Clinical Data Access, Understanding, and Analysis.* [arXiv:2507.01053](https://doi.org/10.48550/arXiv.2507.01053)
+
+## Known Issues & Contributions
+
+### kagent A2A Client Timeout (hardcoded 30s)
+
+**Problem:** kagent's MCP handler uses a hardcoded 30-second timeout for A2A client calls (`invoke_agent`). When an agent performs multi-step work — schema exploration, multiple tool calls, LLM reasoning — the total round-trip easily exceeds 30s. The agent completes successfully (visible in pod logs), but the caller receives a timeout error:
+
+```
+Failed to send A2A message: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+```
+
+**Our fix:** We opened [kagent PR #1617](https://github.com/kagent-dev/kagent/pull/1617) to make the timeout configurable, reusing the existing `STREAMING_TIMEOUT` config (default 600s) that the A2A registrar and CLI already use.
+
+**Notebook workaround:** Until the fix is merged, the demo notebook ([`demo/lactate_cohort_analysis.ipynb`](demo/lactate_cohort_analysis.ipynb)) includes an automatic retry loop (up to 3 attempts with 5s pause) that handles the timeout gracefully — on retry, the agent typically responds faster since it's already warmed up.
+
+---
 
 ## Troubleshooting
 
@@ -313,7 +340,7 @@ make destroy         # Start fresh
 
 **Built for [MCP_HACK//26](https://aihackathon.dev/)**
 
-kagent (CNCF) · agentgateway (Linux Foundation) · m3 · ArgoCD · MCP
+kagent (CNCF) · kgateway / agentgateway (Linux Foundation) · m3 · agentregistry · ArgoCD · MCP
 
 </div>
 
