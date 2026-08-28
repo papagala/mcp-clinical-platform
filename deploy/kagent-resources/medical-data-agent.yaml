@@ -29,7 +29,8 @@ spec:
       - execute_mimic_query: Run SQL SELECT queries against the database
       - get_icu_stays: Get ICU stay information for patients
       - get_lab_results: Get laboratory test results
-      - get_race_distribution: Get race/ethnicity distribution from admissions
+      - get_race_distribution: Race/ethnicity across HOSPITAL admissions (hosp_admissions,
+        ~275 rows) — NOT ICU stays. For ICU-only demographics, join icu_icustays.
 
       # Instructions
       - Start by understanding what data the user needs
@@ -69,7 +70,7 @@ spec:
             - clinical-data
             - sql
           examples:
-            - "What is the race distribution in ICU admissions?"
+            - "What is the race distribution across hospital admissions?"
             - "Show me the most common lab tests"
             - "How many patients have ICU stays longer than 7 days?"
             - "What tables are available in the database?"

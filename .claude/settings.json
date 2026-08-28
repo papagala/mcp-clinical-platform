@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcp-clinical-platform__kagent_list_agents",
+      "mcp__mcp-clinical-platform__kagent_invoke_agent",
+      "mcp__mcp-clinical-platform__m3_get_database_schema",
+      "mcp__mcp-clinical-platform__m3_get_table_info",
+      "mcp__mcp-clinical-platform__m3_get_icu_stays",
+      "mcp__mcp-clinical-platform__m3_get_lab_results",
+      "mcp__mcp-clinical-platform__m3_get_race_distribution",
+      "mcp__mcp-clinical-platform__m3_execute_mimic_query",
+      "mcp__mcp-clinical-platform__registry_list_servers",
+      "mcp__mcp-clinical-platform__registry_list_agents",
+      "mcp__mcp-clinical-platform__registry_list_skills",
+      "mcp__mcp-clinical-platform__registry_list_deployments",
+      "mcp__mcp-clinical-platform__registry_get_server",
+      "mcp__mcp-clinical-platform__registry_get_agent",
+      "mcp__mcp-clinical-platform__registry_get_skill",
+      "mcp__mcp-clinical-platform__registry_get_deployment",
+      "mcp__mcp-clinical-platform__registry_get_server_readme",
+      "mcp__mcp-clinical-platform__registry_registry_health",
+      "mcp__mcp-clinical-platform__registry_registry_version",
+      "Bash(make status)",
+      "Bash(make ports)",
+      "Bash(make logs)",
+      "Bash(make registry-seed)",
+      "Bash(make substrate-status)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl api-resources:*)",
+      "Bash(kubectl explain:*)",
+      "Bash(helm show:*)",
+      "Bash(helm template:*)",
+      "Bash(kind get clusters)"
+    ],
+    "ask": [
+      "Bash(kubectl delete:*)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl patch:*)",
+      "Bash(make create)",
+      "Bash(make destroy)",
+      "Bash(make substrate)"
+    ]
+  }
+}

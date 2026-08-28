@@ -25,6 +25,24 @@ metadata:
   name: mcp-federation
   namespace: kagent
 spec:
+  # Raw SQL over patient records must not be reachable directly. It is exposed
+  # only through clinical-ops-agent, where requireApproval gates it — the agent
+  # talks to m3 as a K8s Service, bypassing this gateway policy.
+  #
+  # Without this, any gateway client can call m3_execute_mimic_query and skip
+  # the approval entirely. Deny both hides it from tools/list and rejects
+  # call_tool.
+  #
+  # NOTE: this policy MUST sit at spec.policies (backend level). The same block
+  # under targets[].static.policies is silently accepted but never enforced in
+  # agentgateway v1.0.1. The CEL matches the UNPREFIXED tool name.
+  policies:
+    mcp:
+      authorization:
+        action: Deny
+        policy:
+          matchExpressions:
+            - 'mcp.tool.name == "execute_mimic_query"'
   mcp:
     failureMode: FailOpen
     targets:
