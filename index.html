@@ -76,6 +76,14 @@ pre{background:#070b10;border:1px solid var(--line);border-radius:10px;
   text-transform:uppercase;margin-bottom:6px;color:var(--accent)}
 .note.warn .lab{color:var(--gate)} .note.good .lab{color:var(--ok)}
 
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:3px 9px;
+  border-radius:999px;font-weight:600;white-space:nowrap;letter-spacing:.04em}
+.pill.stop{background:rgba(240,160,32,.14);color:var(--gate);border:1px solid rgba(240,160,32,.35)}
+.pill.go{background:rgba(63,185,80,.12);color:var(--ok);border:1px solid rgba(63,185,80,.3)}
+.contrast{display:grid;gap:14px;grid-template-columns:repeat(2,1fr);margin:22px 0 16px}
+@media(max-width:860px){.contrast{grid-template-columns:1fr}}
+.cw{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+  display:flex;flex-direction:column;gap:9px;font-size:14px;color:var(--muted);line-height:1.55}
 .prompt{background:var(--panel);border:1px solid var(--line-2);border-radius:14px;
   padding:26px;margin:0 0 22px}
 .prompt .tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
@@ -193,20 +201,32 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   <p class="eyebrow">The demo</p>
   <h2>Two prompts</h2>
   <p class="narrow">Both typed into <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>
-  — no special console. The first shows the borrowed tool working. The second shows the agent being
-  stopped.</p>
+  — no special console. <strong>They're a pair, and the difference between them is the whole
+  point:</strong> the first runs instantly with nobody asked, the second stops dead.</p>
+
+  <div class="contrast">
+    <div class="cw"><span class="pill go">✅ no approval</span>
+      <span>Prompt 1 uses a <strong>pre-reviewed</strong> tool. A human wrote and checked that query
+      before it ever shipped, so the agent may run it freely.</span></div>
+    <div class="cw"><span class="pill stop">⛔ approval required</span>
+      <span>Prompt 2 makes the agent <strong>write its own query</strong> against patient records.
+      Nobody has read it. So it stops.</span></div>
+  </div>
+  <p class="narrow" style="font-size:14.5px">Same database. Same agent. The gate isn't about how
+  risky the data is — it's about <strong>who wrote the question</strong>.</p>
 
   <div class="prompt">
-    <div class="tag">Prompt 1 — the borrowed tool</div>
+    <div class="tag">Prompt 1 — the borrowed tool <span class="pill go" style="margin-left:8px">runs freely</span></div>
     <h3>Ask a question of the data</h3>
     <p>I didn't write the thing that answers this. I just connected to it.</p>
     <div class="cp"><pre>Show me the race distribution across hospital admissions.</pre><button class="cpbtn">Copy</button></div>
-    <p class="watch"><b>Watch for:</b> real numbers from a clinical database running in the cluster —
-    reached through a tool built by another team, at another institution.</p>
+    <p class="watch"><b>Watch for:</b> real numbers, immediately — <strong>nobody was asked for
+    permission.</strong> That's deliberate. Reached through a tool built by another team, at another
+    institution.</p>
   </div>
 
   <div class="prompt" style="border-color:rgba(240,160,32,.4)">
-    <div class="tag" style="color:var(--gate)">Prompt 2 — the gate</div>
+    <div class="tag" style="color:var(--gate)">Prompt 2 — the gate <span class="pill stop" style="margin-left:8px">stops and waits</span></div>
     <h3>Ask something it has to think about</h3>
     <p>No pre-built answer exists for this, so the agent has to write its own database query — over
     patient records.</p>
