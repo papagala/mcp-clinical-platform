@@ -276,7 +276,93 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   <h2>Everything referenced here</h2>
   <p class="narrow">Start anywhere. All of it is open source.</p>
 
-  <h3 style="margin-top:30px">The pieces</h3>
+
+  <h3 style="margin-top:40px">Try it yourself — a personal agent, in a minute</h3>
+  <p class="narrow">You don't need any of the infrastructure above to start. In
+  <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>, just
+  describe the agent you want in plain English and it writes the definition for you:</p>
+
+  <div class="cp"><pre>Create a subagent that reviews my pull requests for security issues.
+Save it to ~/.claude/agents/ so I can use it in any project.</pre><button class="cpbtn">Copy</button></div>
+
+  <p class="narrow">That's it — a file appears at <code>~/.claude/agents/</code> and the agent is
+  available immediately. No console, no deployment, no approval from anyone.</p>
+
+  <h4 style="margin-top:26px">Then give it tools</h4>
+  <p class="narrow">An agent with no tools can only talk. Adding one is a single command — this is
+  exactly how the clinical data server got connected in this demo:</p>
+  <div class="cp"><pre>claude mcp add --transport http my-tools https://example.com/mcp</pre><button class="cpbtn">Copy</button></div>
+  <p class="narrow" style="font-size:14.5px">Check it with <code>/mcp</code>. That's the whole
+  extension model: the agent you wrote in a sentence can now reach anything that speaks the protocol.</p>
+
+  <h3 style="margin-top:40px">Share it — plugins and marketplaces</h3>
+  <p class="narrow">Once an agent is useful, the next question is how a colleague gets it. Claude Code
+  packages agents, skills and tool connections into a <strong>plugin</strong>, and any Git repo can act
+  as a <strong>marketplace</strong>. Two commands for whoever you share it with:</p>
+
+  <div class="cp"><pre>/plugin marketplace add your-org/your-repo
+/plugin install your-plugin@your-marketplace</pre><button class="cpbtn">Copy</button></div>
+
+  <p class="narrow" style="font-size:14.5px">On your side it's one file —
+  <code>.claude-plugin/marketplace.json</code> at the repo root — listing the plugins it offers. The
+  plugin itself is just a folder with <code>agents/</code>, <code>skills/</code> and an optional
+  <code>.mcp.json</code>. Full structure in the
+  <a href="deep-dive.html#claude">technical detail</a>.</p>
+
+  <div class="note warn" style="margin-top:16px">
+    <span class="lab">Worth knowing</span>
+    <p>Plugins run with your privileges and hooks execute without prompting — only add marketplaces
+    you trust, exactly as you'd treat any dependency.</p>
+  </div>
+
+  <h3 style="margin-top:40px">Scale it — the same pattern, centrally</h3>
+  <p class="narrow">A personal agent is yours alone. The moment several teams share one — or it touches
+  regulated data — you need the things this demo shows: somewhere to run, an audit trail, and a gate.
+  That's the only real difference between the two ends.</p>
+
+  <p class="narrow"><strong>The shape doesn't change with the vendor.</strong> Tools, an agent, and a
+  governance layer. Whatever your organisation already runs, there's an equivalent — so what you learn
+  in Claude Code on your laptop transfers:</p>
+
+  <div class="links" style="margin-top:18px">
+    <a class="lk" href="https://kagent.dev/" target="_blank" rel="noopener">
+      <span class="t">kagent — used in this demo</span>
+      <span class="d">Agents as Kubernetes resources. Created at Solo.io, now a CNCF sandbox project,
+      Apache 2.0. Where the approval gate you just saw comes from.</span>
+    </a>
+    <a class="lk" href="https://aws.amazon.com/bedrock/agentcore/" target="_blank" rel="noopener">
+      <span class="t">AWS — Amazon Bedrock AgentCore</span>
+      <span class="d">Build, deploy and run agents with any framework or model, with identity and observability handled.</span>
+    </a>
+    <a class="lk" href="https://azure.microsoft.com/en-us/products/ai-foundry" target="_blank" rel="noopener">
+      <span class="t">Microsoft — Foundry Agent Service</span>
+      <span class="d">Part of Microsoft Foundry. Agents that automate business processes "while keeping humans in control".</span>
+    </a>
+    <a class="lk" href="https://developers.openai.com/api/docs/guides/agents" target="_blank" rel="noopener">
+      <span class="t">OpenAI — Agents SDK</span>
+      <span class="d">Manages the agent loop, multi-agent orchestration, sessions, tracing and guardrails.</span>
+    </a>
+    <a class="lk" href="https://docs.claude.com/en/api/agent-sdk/overview" target="_blank" rel="noopener">
+      <span class="t">Anthropic — Claude Agent SDK</span>
+      <span class="d">The same harness Claude Code is built on, for building your own agents.</span>
+    </a>
+    <a class="lk" href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">
+      <span class="t">MCP — the common layer</span>
+      <span class="d">The one piece shared across all of the above. Tools you connect today keep working if the platform changes.</span>
+    </a>
+  </div>
+
+  <div class="note good" style="margin-top:20px">
+    <span class="lab">Why this is reusable</span>
+    <p>Every platform above solves the same three problems in the same order — connect tools, give the
+    agent somewhere to run, decide what it may do unattended. Pick whichever your organisation already
+    uses. <strong>The one thing worth standardising on is the tool layer</strong>, because that's what
+    you'd otherwise rewrite every time the platform underneath changes.</p>
+  </div>
+
+  <h3 style="margin-top:40px">Everything referenced here</h3>
+
+  <h4 style="margin-top:26px">The pieces</h4>
   <div class="links">
     <a class="lk" href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">
       <span class="t">MCP — Model Context Protocol</span>
