@@ -19,7 +19,7 @@
 }
 /* Dark variant — the palette the project website already uses. */
 html[data-theme="dark"]{
-  --bg:#0a0e14; --ink:#e6edf3; --body:#a3b2c1; --dim:#6f7f8f;
+  --bg:#0a0e14; --ink:#f0f6fc; --body:#c2cfdb; --dim:#93a2b1;
   --line:#1e2b38; --line-2:#31465b; --soft:#121a23;
   --accent:#4a9eff; --accent-soft:#11243b;
   --gate:#f0a020; --gate-soft:#2b2010;
@@ -30,7 +30,12 @@ html[data-theme="dark"]{
 html[data-theme="dark"] pre,
 html[data-theme="dark"] .pbox{border:1px solid var(--line)}
 html[data-theme="dark"] .shot{background:#05080c}
-html[data-theme="dark"] .chrome{color:#5d6c7b}
+html[data-theme="dark"] .chrome{color:#788797}
+/* Antialiased smoothing thins strokes badly on a dark background — light text
+   on dark already looks heavier than it is, and the two effects cancel into
+   something spindly. Hand it back to the OS renderer only in dark mode. */
+html[data-theme="dark"] body{-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto}
+html[data-theme="dark"] .hint{color:#93a2b1}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;overflow:hidden;background:var(--around)}
 body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
@@ -220,6 +225,73 @@ a{color:var(--accent);text-decoration:none}
   background:var(--bg);padding:5px 12px;border-radius:999px;
   border:1px solid var(--line);transition:opacity .4s;z-index:20}
 .hint.gone{opacity:0;pointer-events:none}
+
+/* ── Phone / narrow window: reading mode ──────────────────────────────────
+   A 1280x720 stage scaled to a 390px-wide screen lands body copy at ~6px.
+   Below 820px the stage stops being a stage: slides unstack into one
+   scrollable column at native type sizes. Everything here is inside the
+   media query, so the presented deck above 820px is untouched. */
+@media (max-width:820px){
+  html,body{height:auto;overflow:auto;background:var(--bg);-webkit-text-size-adjust:100%}
+  #fit{position:static;display:block}
+  #stage{width:100%;height:auto;transform:none!important;overflow:visible}
+  section{position:static;display:flex!important;width:auto;height:auto;
+    padding:38px 20px 34px;border-bottom:1px solid var(--line)}
+  section:last-child{border-bottom:0}
+  .body{display:block;flex:none}
+  .chrome,.bar,.hint{display:none}
+  /* stays reachable through a 22-slide scroll, and never fades: the idle
+     timer keys on mousemove, which a touch screen never fires */
+  .themebtn{top:10px;right:10px;box-shadow:0 1px 6px rgba(0,0,0,.12)}
+  .themebtn.gone{opacity:1;pointer-events:auto}
+
+  h1{font-size:33px;margin-bottom:16px}
+  h2{font-size:25px}
+  h3{font-size:17px}
+  p{font-size:16px}
+  .sub{font-size:17px}
+  .lead{font-size:15px;margin-bottom:20px}
+  .badge{margin-bottom:20px}
+  .byline{margin-top:26px}
+  .rule{margin-bottom:20px}
+
+  /* Every multi-column arrangement collapses to one column. !important
+     because a few slides set grid-template-columns inline to tune their
+     own ratio, and an inline style outranks any stylesheet rule. */
+  .grid,.strip{grid-template-columns:1fr!important;gap:20px!important}
+  .strip{margin-top:20px}
+  .refs{columns:1}
+  .cmp .row{grid-template-columns:1fr}
+  .cmp .c+.c{border-left:0;border-top:1px solid var(--line)}
+  .cmp .k{padding-bottom:0}
+
+  /* the flow diagram turns vertical; arrows rotate to match */
+  .flow{flex-direction:column;align-items:stretch}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .branch{flex:none;width:100%}
+  .stop{flex:none;justify-content:center}
+
+  /* the timeline rail flips from horizontal to vertical */
+  .tl{flex-direction:column}
+  .tl::before{left:9px;right:auto;top:9px;bottom:9px;width:2px;height:auto}
+  .tl .t{padding:0 0 22px 34px}
+  .tl .t:last-child{padding-bottom:0}
+  .tl .dot{position:absolute;left:0;top:0}
+  .tl .yr{margin-top:0}
+
+  /* SVG text scales with the viewBox, so shrinking to 390px would make the
+     labels illegible. Hold a floor and let the diagram scroll sideways. */
+  .dgbox{overflow-x:auto;-webkit-overflow-scrolling:touch;height:auto!important}
+  .dgbox>svg.dg,svg.dg{min-width:640px;height:auto}
+
+  pre{font-size:11.5px;overflow-x:auto;padding:14px 15px}
+  .pbox{padding:16px 18px;gap:10px}
+  .pbox .caret,.pbox .txt{font-size:15px}
+  .callout{font-size:16px;padding:16px 18px}
+  ol.watch li{font-size:15px;padding-left:32px}
+  .card{padding:18px 18px}
+  .fn{font-size:12.5px}
+}
 
 @media print{
   html,body{overflow:visible;background:#fff}
@@ -999,7 +1071,13 @@ make ports    <span class="c"># port-forwards</span></pre>
   setTheme(saved === 'dark');
   themeBtn.addEventListener('click', function(){ setTheme(!isDark()); });
 
+  // Below 820px the CSS unstacks the deck into a scrollable column, so the
+  // fit-to-viewport scale has to get out of the way entirely.
+  var narrow = window.matchMedia('(max-width:820px)');
+  function isReading(){ return narrow.matches; }
+
   function fit(){
+    if (isReading()){ stage.style.transform = ''; return; }
     var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
     stage.style.transform = 'scale(' + s + ')';
   }
@@ -1037,7 +1115,7 @@ make ports    <span class="c"># port-forwards</span></pre>
   var x0 = null;
   document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
   document.addEventListener('touchend', function(e){
-    if (x0 === null) return;
+    if (x0 === null || isReading()) return;   // reading mode scrolls, it doesn't page
     var dx = e.changedTouches[0].clientX - x0;
     if (Math.abs(dx) > 50) show(i + (dx < 0 ? 1 : -1));
     x0 = null;
@@ -1055,6 +1133,9 @@ make ports    <span class="c"># port-forwards</span></pre>
   window.addEventListener('hashchange', function(){ show(fromHash(), false); });
   fit();
   show(fromHash());
+  // A shared #/n link should land on that slide in reading mode too, where
+  // every slide is on screen and "current" means scroll position.
+  if (isReading() && i > 0) slides[i].scrollIntoView();   // i is clamped by show()
   setTimeout(function(){ hint.classList.add('gone'); themeBtn.classList.add('gone'); }, 6000);
 })();
 </script>
