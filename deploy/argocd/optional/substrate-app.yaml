@@ -1,0 +1,27 @@
+# OPTIONAL — Agent Substrate control plane (ate-api-server, atenet-router,
+# gVisor actor management). Once Healthy, `make substrate` points the kagent
+# controller at it and creates the kagent-default WorkerPool.
+#
+# Requires a working gVisor (runsc) runtime — may not schedule on Kind/macOS.
+# See README Layer 3.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: substrate
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/kagent-dev/substrate/helm
+    chart: substrate
+    targetRevision: 0.0.6
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ate-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

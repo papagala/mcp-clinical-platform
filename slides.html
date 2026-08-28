@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From Ideas to Agents — A Practical Journey into Agentic AI</title>
+<meta name="description" content="A structural teardown of AI agents, the Model Context Protocol, and Kubernetes-native orchestration — with a live demo.">
+<style>
+:root{
+  --bg:#ffffff; --ink:#0d141b; --body:#4c5a67; --dim:#8b98a5;
+  --line:#e4e9ee; --line-2:#d3dbe3; --soft:#f7f9fb;
+  --accent:#1668d6; --accent-soft:#eaf2fd;
+  --gate:#b06a00; --gate-soft:#fdf3e3;
+  --ok:#1a7f37; --ok-soft:#eef7f0;
+  --ok-line:#bcdcc6; --gate-line:#e6c48a; --badge-line:#cfe2fa;
+  --surface:#ffffff; --wire:#c9d3dc; --code:#0d141b; --around:#eef1f4;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+}
+/* Dark variant — the palette the project website already uses. */
+html[data-theme="dark"]{
+  --bg:#0a0e14; --ink:#e6edf3; --body:#a3b2c1; --dim:#6f7f8f;
+  --line:#1e2b38; --line-2:#31465b; --soft:#121a23;
+  --accent:#4a9eff; --accent-soft:#11243b;
+  --gate:#f0a020; --gate-soft:#2b2010;
+  --ok:#3fb950; --ok-soft:#10281a;
+  --ok-line:#2c5d3a; --gate-line:#6d5220; --badge-line:#25405f;
+  --surface:#161f2a; --wire:#3a5068; --code:#05080c; --around:#05080c;
+}
+html[data-theme="dark"] pre,
+html[data-theme="dark"] .pbox{border:1px solid var(--line)}
+html[data-theme="dark"] .shot{background:#05080c}
+html[data-theme="dark"] .chrome{color:#5d6c7b}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--around)}
+body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+
+/* Fixed 1280x720 stage, scaled to fit. Without JS it still renders at native size. */
+#fit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#stage{width:1280px;height:720px;position:relative;background:var(--bg);
+  overflow:hidden;transform-origin:center center}
+
+section{position:absolute;inset:0;display:none;flex-direction:column;
+  padding:62px 84px 76px;background:var(--bg)}
+section.on{display:flex}
+
+h1{font-size:60px;line-height:1.06;letter-spacing:-.03em;font-weight:660;margin:0 0 22px}
+h2{font-size:40px;line-height:1.12;letter-spacing:-.025em;font-weight:660;margin:0 0 8px}
+h3{font-size:19px;line-height:1.3;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+p{margin:0 0 14px;color:var(--body);font-size:19px;line-height:1.55}
+p:last-child{margin-bottom:0}
+strong{color:var(--ink);font-weight:640}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 16px;font-weight:600}
+.sub{font-size:21px;color:var(--body);line-height:1.5;max-width:830px}
+.rule{width:52px;height:3px;background:var(--accent);border-radius:2px;margin:0 0 26px}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center}
+.lead{font-size:17px;color:var(--dim);margin:0 0 26px;max-width:860px;line-height:1.5}
+
+.chrome{position:absolute;left:84px;right:84px;bottom:30px;display:flex;
+  justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:#a9b4bf}
+.bar{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);
+  transition:width .18s ease;z-index:5}
+
+/* cards */
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:22px 24px}
+.card.plain{background:var(--surface)}
+.card .n{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--accent);
+  margin:0 0 10px;font-weight:600;text-transform:uppercase}
+.card p{font-size:15.5px;line-height:1.5;margin:0}
+.card p+p{margin-top:9px}
+
+/* comparison rows */
+.cmp{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cmp .row{display:grid;grid-template-columns:180px 1fr 1fr;align-items:stretch}
+.cmp .row+.row{border-top:1px solid var(--line)}
+.cmp .row.hd{background:var(--soft)}
+.cmp .c{padding:15px 22px;font-size:16px;color:var(--body);line-height:1.45}
+.cmp .c+.c{border-left:1px solid var(--line)}
+.cmp .row.hd .c{font-weight:650;color:var(--ink);font-size:16.5px}
+.cmp .k{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--dim);display:flex;align-items:center}
+
+/* flow */
+.flow{display:flex;align-items:stretch;gap:0}
+.step{flex:1;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;
+  padding:15px 16px;font-size:14.5px;line-height:1.4;color:var(--body);
+  display:flex;align-items:center;justify-content:center;text-align:center}
+.step>span{display:block}
+.step b{color:var(--ink);font-weight:640}
+.arrow{flex:0 0 30px;display:flex;align-items:center;justify-content:center;
+  color:var(--line-2);font-size:19px}
+.stop{flex:0 0 auto;background:var(--gate-soft);border:1.5px solid var(--gate);
+  color:var(--gate);border-radius:10px;padding:15px 20px;font-weight:680;font-size:14.5px;
+  text-align:center;display:flex;align-items:center;line-height:1.3}
+.branch{display:flex;flex-direction:column;gap:9px;flex:0 0 200px}
+.branch .step{padding:11px 14px;font-size:13.5px}
+.branch .step.go{background:var(--ok-soft);border-color:var(--ok-line)}
+.branch .step.no{background:var(--soft)}
+
+/* code */
+pre{background:var(--code);color:#dde5ed;border-radius:10px;padding:18px 20px;margin:0;
+  font-family:var(--mono);font-size:13px;line-height:1.62;overflow:hidden}
+pre .k{color:#7fb6f0}
+pre .hl{color:#ffd479;font-weight:600;font-style:normal}
+pre .c{color:#61707e}
+.codelabel{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);margin:0 0 9px;font-weight:600}
+
+/* notes strip */
+.strip{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px}
+.strip div{border-left:2.5px solid var(--line-2);padding:2px 0 2px 15px;
+  font-size:14.5px;color:var(--body);line-height:1.45}
+.strip div b{color:var(--ink);font-weight:640}
+.strip.acc div{border-left-color:var(--accent)}
+.strip.vert{grid-template-columns:1fr;gap:15px}
+
+.callout{border:1.5px solid var(--ink);border-radius:12px;padding:20px 26px;
+  font-size:18px;color:var(--ink);line-height:1.5;text-align:center}
+.callout.accent{border-color:var(--accent);background:var(--accent-soft)}
+.callout b{font-weight:680}
+
+/* diagrams — the wrapper owns the height so a tall viewBox can't shove
+   the footnotes over the chrome */
+.dgbox{width:100%;flex:0 0 auto}
+svg.dg{width:100%;height:auto;display:block}
+.dgbox>svg.dg{height:100%}
+svg.dg text{font-family:var(--sans);fill:var(--ink)}
+svg.dg .lbl{font-size:15px}
+svg.dg .box{fill:var(--surface);stroke:var(--line-2);stroke-width:1.2}
+svg.dg .wire{stroke:var(--wire);stroke-width:1;fill:none}
+svg.dg .wire2{stroke:var(--accent);stroke-width:1.4;fill:none;opacity:.55}
+svg.dg .hub{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6}
+svg.dg .mid{fill:var(--surface);stroke:var(--gate);stroke-width:1.4}
+svg.dg .cap{font-size:13px;fill:var(--dim)}
+svg.dg .gwire{stroke:var(--gate);stroke-width:1.4;opacity:.55;fill:none}
+svg.dg .head{fill:var(--wire)}
+
+/* title slide */
+.title-slide{justify-content:center}
+.badge{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+  background:var(--accent-soft);border:1px solid var(--badge-line);border-radius:999px;
+  padding:6px 15px;margin-bottom:28px;font-weight:600;align-self:flex-start}
+.byline{margin-top:38px;font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:.06em}
+
+/* timeline */
+.tl{display:flex;position:relative;margin-top:6px}
+.tl::before{content:"";position:absolute;left:9px;right:9px;top:9px;height:2px;background:var(--line)}
+.tl .t{flex:1;position:relative;padding-right:18px}
+.tl .t:last-child{padding-right:0}
+.tl .dot{width:20px;height:20px;border-radius:50%;background:var(--surface);
+  border:2.5px solid var(--line-2);position:relative;z-index:1}
+.tl .t.on .dot{border-color:var(--accent);background:var(--accent-soft)}
+.tl .yr{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--dim);
+  margin:16px 0 5px;font-weight:600}
+.tl .t.on .yr{color:var(--accent)}
+.tl h3{font-size:15.5px;margin:0 0 3px;line-height:1.25}
+.tl .loc{font-size:12.5px;color:var(--dim);margin:0 0 8px}
+.tl p{font-size:13.5px;line-height:1.45;margin:0}
+
+/* a dark image sitting on the white deck */
+.shot{border-radius:12px;overflow:hidden;border:1px solid var(--line-2);
+  background:#0d141b;display:block;line-height:0}
+.shot img{width:100%;height:auto;display:block}
+
+/* references — APA 7, alphabetical, hanging indent */
+.refs{columns:2;column-gap:38px;font-size:12.5px;line-height:1.45}
+.refs p{color:var(--body);font-size:12.5px;margin:0 0 12px;
+  padding-left:20px;text-indent:-20px;break-inside:avoid}
+.refs em{color:var(--ink)}
+.refs a{color:var(--dim);word-break:break-all;text-decoration:none}
+.refs a:hover{color:var(--accent)}
+
+/* the typed prompt, shown as terminal input */
+.pbox{background:var(--code);border-radius:12px;padding:22px 26px;margin:0 0 22px;
+  display:flex;align-items:baseline;gap:14px}
+.pbox .caret{font-family:var(--mono);font-size:20px;color:var(--accent);font-weight:700;flex:0 0 auto}
+.pbox .txt{font-family:var(--mono);font-size:20px;line-height:1.45;color:#e8eef4}
+.hdrow{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+.hdrow h2{margin:0}
+
+.kv{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.tag{font-family:var(--mono);font-size:12px;padding:4px 11px;border-radius:999px;
+  border:1px solid var(--line-2);color:var(--body);background:var(--surface)}
+.tag.gate{border-color:var(--gate-line);background:var(--gate-soft);color:var(--gate);font-weight:600}
+.tag.go{border-color:var(--ok-line);background:var(--ok-soft);color:var(--ok);font-weight:600}
+
+ol.watch{margin:0;padding-left:0;list-style:none;counter-reset:w}
+ol.watch li{counter-increment:w;font-size:17px;color:var(--body);line-height:1.5;
+  padding-left:38px;position:relative;margin-bottom:12px}
+ol.watch li:last-child{margin-bottom:0}
+ol.watch li::before{content:counter(w);position:absolute;left:0;top:1px;
+  width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+ol.watch li b{color:var(--ink);font-weight:640}
+ol.watch li.gate::before{background:var(--gate-soft);color:var(--gate)}
+
+a{color:var(--accent);text-decoration:none}
+/* Top-right, clear of the slide counter. Fades out while presenting and
+   comes back on mouse move, so it isn't on screen for the audience. */
+.themebtn{position:fixed;right:16px;top:14px;z-index:30;cursor:pointer;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  padding:6px 14px;border-radius:999px;background:var(--bg);color:var(--dim);
+  border:1px solid var(--line-2);transition:opacity .4s}
+.themebtn:hover{color:var(--ink);border-color:var(--accent)}
+.themebtn.gone{opacity:0;pointer-events:none}
+.hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:11px;color:#93a0ac;letter-spacing:.08em;
+  background:var(--bg);padding:5px 12px;border-radius:999px;
+  border:1px solid var(--line);transition:opacity .4s;z-index:20}
+.hint.gone{opacity:0;pointer-events:none}
+
+@media print{
+  html,body{overflow:visible;background:#fff}
+  #fit{position:static}
+  #stage{transform:none!important;width:1280px;height:auto}
+  section{position:relative;display:flex!important;width:1280px;height:720px;
+    page-break-after:always;break-after:page}
+  .bar,.hint,.themebtn{display:none}
+}
+@page{size:1280px 720px;margin:0}
+</style>
+</head>
+<body>
+
+<div id="fit"><div id="stage">
+
+<!-- 1 -->
+<section class="title-slide">
+  <span class="badge">Live demo included</span>
+  <h1>From Ideas to Agents</h1>
+  <div class="rule"></div>
+  <p class="sub">A structural teardown of AI agents, the <strong>Model Context Protocol</strong>,
+  and Kubernetes-native orchestration — ending in a live walkthrough of an
+  award-winning kagent deployment.</p>
+  <p class="byline">A practical journey into agentic AI</p>
+</section>
+
+<!-- 2 -->
+<section>
+  <p class="eyebrow">Who's talking</p>
+  <h2>Oswaldo Gómez</h2>
+  <p class="lead">Lead IT Expert, pRED MLOps — Roche · Poznań, Poland</p>
+  <div class="body">
+    <div class="grid" style="grid-template-columns:.82fr 1.18fr;gap:40px;align-items:start">
+      <div>
+        <span class="shot"><img src="assets/speaking-dis2026.jpg"
+          alt="Speaking on the Data Engineering stage at Data Innovation Summit 2026"></span>
+        <p style="font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--dim);
+           margin:10px 0 0">Data Innovation Summit 2026</p>
+      </div>
+      <div>
+        <p>I keep machine learning running in production: four Kubernetes clusters across sandbox,
+        dev, UAT and production, billions of predictions a year, and a multi-agent AI system a few
+        hundred researchers depend on.</p>
+        <p>Physics at UNAM, then an MSc in Data Science. The part this talk is about — running it in
+        production — I learned on the job, starting at <strong>S&amp;P Global</strong>.</p>
+        <div class="strip vert" style="margin-top:22px">
+          <div><b>Paper.</b> “From Research to Impact: A Comprehensive Platform for AI Model
+          Deployment in Drug Discovery” — <em>Artificial Intelligence in the Life Sciences</em>, 2026.</div>
+          <div><b>KubeCon Europe 2026.</b> Lightning talk at the CNCF co-located events in Amsterdam.</div>
+          <div><b>One patent</b> — still in process. They tell me these take five years.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section>
+  <p class="eyebrow">The path</p>
+  <h2>From physics to production AI</h2>
+  <div class="body">
+    <div class="tl">
+      <div class="t">
+        <div class="dot"></div>
+        <p class="yr">2012 — 2017</p>
+        <h3>UNAM</h3>
+        <p class="loc">Mexico City</p>
+        <p>BSc Physics — quantum optics and computational physics. Teaching assistant for five years.</p>
+      </div>
+      <div class="t">
+        <div class="dot"></div>
+        <p class="yr">2016 — 2018</p>
+        <h3>Tata Consultancy Services</h3>
+        <p class="loc">Querétaro</p>
+        <p>Full-stack developer, then data scientist. The first things I built that other people
+        depended on.</p>
+      </div>
+      <div class="t on">
+        <div class="dot"></div>
+        <p class="yr">2018 — 2019</p>
+        <h3>S&amp;P Global Ratings</h3>
+        <p class="loc">Mexico City</p>
+        <p>Senior Data Analyst, Structured Finance LATAM. Turning unstructured sources into data
+        people could actually use.</p>
+      </div>
+      <div class="t on">
+        <div class="dot"></div>
+        <p class="yr">2019 — 2021</p>
+        <h3>S&amp;P Global Market&nbsp;Intelligence</h3>
+        <p class="loc">AI Engineering</p>
+        <p>Machine Learning Engineer — production AI pipelines on Kubernetes, and architecture
+        review for S&amp;P's AI systems.</p>
+      </div>
+      <div class="t">
+        <div class="dot"></div>
+        <p class="yr">2021 — now</p>
+        <h3>Roche</h3>
+        <p class="loc">Poznań, Poland</p>
+        <p>MLOps engineer → Lead IT Expert, pRED. Multi-agent AI in production, and clusters that
+        have to stay up.</p>
+      </div>
+    </div>
+    <div class="callout accent" style="margin-top:30px;text-align:left">
+      Ratings is where I started. The <b>Data Science Academy</b> — built by Kensho colleagues after
+      the acquisition — is what moved me across to AI Engineering, and S&amp;P supported the rest
+      with access to A Cloud Guru, Pluralsight, Lynda and LinkedIn Learning.
+      Every layer in this talk traces back to that.
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section>
+  <p class="eyebrow">The shift</p>
+  <h2>Escaping the chat box</h2>
+  <p class="lead">The difference isn't intelligence. It's whether anything happens when the model finishes thinking.</p>
+  <div class="body">
+    <div class="cmp">
+      <div class="row hd">
+        <div class="c k">&nbsp;</div>
+        <div class="c">AI assistant <span style="color:var(--dim);font-weight:400">— reactive</span></div>
+        <div class="c">AI agent <span style="color:var(--dim);font-weight:400">— proactive</span></div>
+      </div>
+      <div class="row">
+        <div class="c k">Interface</div>
+        <div class="c">Waits for a prompt. One turn, one answer.</div>
+        <div class="c">Given a goal. Decides its own next step.</div>
+      </div>
+      <div class="row">
+        <div class="c k">State</div>
+        <div class="c">Forgets. Every conversation starts cold.</div>
+        <div class="c">Carries memory across steps and sessions.</div>
+      </div>
+      <div class="row">
+        <div class="c k">Execution</div>
+        <div class="c">Produces text. A human does the work.</div>
+        <div class="c">Calls tools. Changes real systems.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section>
+  <p class="eyebrow">Anatomy</p>
+  <h2>What an agent is actually made of</h2>
+  <p class="lead">A model on its own is a reasoning engine. Four things around it turn it into an agent.</p>
+  <div class="body">
+    <div class="grid g4">
+      <div class="card">
+        <p class="n">Planning</p>
+        <p>Breaks a goal into steps, and re-plans when a step fails.</p>
+      </div>
+      <div class="card">
+        <p class="n">Memory</p>
+        <p>Keeps what happened, so step nine knows about step two.</p>
+      </div>
+      <div class="card">
+        <p class="n">Instructions</p>
+        <p>The system prompt. Identity, scope, and the rules it won't cross.</p>
+      </div>
+      <div class="card">
+        <p class="n">Tools</p>
+        <p>The hands. Everything the agent can reach outside itself.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:26px">
+      At the centre sits the <b>LLM</b> — the reasoning engine.
+      Remove any of the four and you're back to a chat box.
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section>
+  <p class="eyebrow">The bottleneck</p>
+  <h2>N × M</h2>
+  <p class="lead">Every model needs a bespoke connector to every tool. Five models and five systems is
+  twenty-five integrations to build, and twenty-five to maintain.</p>
+  <div class="body">
+    <svg class="dg" viewBox="0 0 1000 400" role="img" aria-label="Every model wired to every tool">
+      <g class="wire">
+        <line x1="176" y1="56" x2="824" y2="56"/><line x1="176" y1="56" x2="824" y2="128"/><line x1="176" y1="56" x2="824" y2="200"/><line x1="176" y1="56" x2="824" y2="272"/><line x1="176" y1="56" x2="824" y2="344"/>
+        <line x1="176" y1="128" x2="824" y2="56"/><line x1="176" y1="128" x2="824" y2="128"/><line x1="176" y1="128" x2="824" y2="200"/><line x1="176" y1="128" x2="824" y2="272"/><line x1="176" y1="128" x2="824" y2="344"/>
+        <line x1="176" y1="200" x2="824" y2="56"/><line x1="176" y1="200" x2="824" y2="128"/><line x1="176" y1="200" x2="824" y2="200"/><line x1="176" y1="200" x2="824" y2="272"/><line x1="176" y1="200" x2="824" y2="344"/>
+        <line x1="176" y1="272" x2="824" y2="56"/><line x1="176" y1="272" x2="824" y2="128"/><line x1="176" y1="272" x2="824" y2="200"/><line x1="176" y1="272" x2="824" y2="272"/><line x1="176" y1="272" x2="824" y2="344"/>
+        <line x1="176" y1="344" x2="824" y2="56"/><line x1="176" y1="344" x2="824" y2="128"/><line x1="176" y1="344" x2="824" y2="200"/><line x1="176" y1="344" x2="824" y2="272"/><line x1="176" y1="344" x2="824" y2="344"/>
+      </g>
+      <g>
+        <rect class="box" x="26" y="39" width="150" height="34" rx="7"/><text class="lbl" x="101" y="61" text-anchor="middle">Claude</text>
+        <rect class="box" x="26" y="111" width="150" height="34" rx="7"/><text class="lbl" x="101" y="133" text-anchor="middle">GPT</text>
+        <rect class="box" x="26" y="183" width="150" height="34" rx="7"/><text class="lbl" x="101" y="205" text-anchor="middle">Llama</text>
+        <rect class="box" x="26" y="255" width="150" height="34" rx="7"/><text class="lbl" x="101" y="277" text-anchor="middle">Gemini</text>
+        <rect class="box" x="26" y="327" width="150" height="34" rx="7"/><text class="lbl" x="101" y="349" text-anchor="middle">Mistral</text>
+      </g>
+      <g>
+        <rect class="box" x="824" y="39" width="150" height="34" rx="7"/><text class="lbl" x="899" y="61" text-anchor="middle">Slack</text>
+        <rect class="box" x="824" y="111" width="150" height="34" rx="7"/><text class="lbl" x="899" y="133" text-anchor="middle">GitHub</text>
+        <rect class="box" x="824" y="183" width="150" height="34" rx="7"/><text class="lbl" x="899" y="205" text-anchor="middle">Postgres</text>
+        <rect class="box" x="824" y="255" width="150" height="34" rx="7"/><text class="lbl" x="899" y="277" text-anchor="middle">Jira</text>
+        <rect class="box" x="824" y="327" width="150" height="34" rx="7"/><text class="lbl" x="899" y="349" text-anchor="middle">Internal APIs</text>
+      </g>
+      <rect class="mid" x="352" y="172" width="296" height="56" rx="9"/>
+      <text class="lbl" x="500" y="196" text-anchor="middle" style="font-weight:640">Custom wrappers,</text>
+      <text class="lbl" x="500" y="216" text-anchor="middle" style="font-weight:640">bespoke glue code</text>
+    </svg>
+  </div>
+</section>
+
+<!-- 5 -->
+<section>
+  <p class="eyebrow">The protocol</p>
+  <h2>MCP: the USB-C of AI</h2>
+  <p class="lead">One open standard between models and systems. Build a tool once, and every
+  MCP-compliant agent can use it. N × M collapses to N + M.</p>
+  <div class="body">
+    <div class="dgbox" style="height:330px">
+    <svg class="dg" viewBox="0 0 1000 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Models and tools both connect to MCP">
+      <g class="wire2">
+        <line x1="176" y1="46" x2="424" y2="180"/><line x1="176" y1="112" x2="424" y2="180"/>
+        <line x1="176" y1="178" x2="424" y2="180"/><line x1="176" y1="244" x2="424" y2="180"/>
+        <line x1="176" y1="310" x2="424" y2="180"/>
+        <line x1="576" y1="180" x2="824" y2="46"/><line x1="576" y1="180" x2="824" y2="112"/>
+        <line x1="576" y1="180" x2="824" y2="178"/><line x1="576" y1="180" x2="824" y2="244"/>
+        <line x1="576" y1="180" x2="824" y2="310"/>
+      </g>
+      <g>
+        <rect class="box" x="26" y="29" width="150" height="34" rx="7"/><text class="lbl" x="101" y="51" text-anchor="middle">Claude</text>
+        <rect class="box" x="26" y="95" width="150" height="34" rx="7"/><text class="lbl" x="101" y="117" text-anchor="middle">GPT</text>
+        <rect class="box" x="26" y="161" width="150" height="34" rx="7"/><text class="lbl" x="101" y="183" text-anchor="middle">Llama</text>
+        <rect class="box" x="26" y="227" width="150" height="34" rx="7"/><text class="lbl" x="101" y="249" text-anchor="middle">Gemini</text>
+        <rect class="box" x="26" y="293" width="150" height="34" rx="7"/><text class="lbl" x="101" y="315" text-anchor="middle">Mistral</text>
+      </g>
+      <rect class="hub" x="424" y="112" width="152" height="136" rx="12"/>
+      <text class="lbl" x="500" y="168" text-anchor="middle" style="font-weight:660">Model</text>
+      <text class="lbl" x="500" y="189" text-anchor="middle" style="font-weight:660">Context</text>
+      <text class="lbl" x="500" y="210" text-anchor="middle" style="font-weight:660">Protocol</text>
+      <text x="500" y="72" text-anchor="middle" style="font-family:var(--mono);font-size:24px;fill:var(--accent);font-weight:600">N × M → N + M</text>
+      <g>
+        <rect class="box" x="824" y="29" width="150" height="34" rx="7"/><text class="lbl" x="899" y="51" text-anchor="middle">Slack</text>
+        <rect class="box" x="824" y="95" width="150" height="34" rx="7"/><text class="lbl" x="899" y="117" text-anchor="middle">GitHub</text>
+        <rect class="box" x="824" y="161" width="150" height="34" rx="7"/><text class="lbl" x="899" y="183" text-anchor="middle">Postgres</text>
+        <rect class="box" x="824" y="227" width="150" height="34" rx="7"/><text class="lbl" x="899" y="249" text-anchor="middle">Jira</text>
+        <rect class="box" x="824" y="293" width="150" height="34" rx="7"/><text class="lbl" x="899" y="315" text-anchor="middle">Internal APIs</text>
+      </g>
+    </svg>
+    </div>
+    <div class="strip acc">
+      <div><b>Open standard.</b> Introduced by Anthropic, now adopted across vendors.</div>
+      <div><b>Client–server.</b> The tool doesn't care which model is calling it.</div>
+      <div><b>Build once.</b> Expose it uniformly to any compliant agent.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section>
+  <p class="eyebrow">Primitives</p>
+  <h2>Three things an MCP server can offer</h2>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card">
+        <p class="n">Tools — the verbs</p>
+        <p>Functions the model can invoke: <code style="font-family:var(--mono);font-size:13.5px">k8s_delete_resource</code>,
+        <code style="font-family:var(--mono);font-size:13.5px">execute_query</code>.</p>
+        <p><strong>Model-controlled.</strong> The agent chooses when to call them — which is exactly
+        why some of them need a gate.</p>
+      </div>
+      <div class="card">
+        <p class="n">Resources — the nouns</p>
+        <p>Read-only data the server exposes: <code style="font-family:var(--mono);font-size:13.5px">file://logs</code>,
+        <code style="font-family:var(--mono);font-size:13.5px">db://users/orders</code>.</p>
+        <p><strong>Application-controlled.</strong> Context handed to the agent, not fetched by it.</p>
+      </div>
+      <div class="card">
+        <p class="n">Prompts — the templates</p>
+        <p>Reusable, structured instructions and workflows.</p>
+        <p><strong>User-controlled.</strong> Guidelines for how a person wants the model to work
+        with this server.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section>
+  <p class="eyebrow">Reality check</p>
+  <h2>Laptop is easy. Production is not.</h2>
+  <div class="body">
+    <div class="grid g2">
+      <div>
+        <p class="codelabel">On a laptop</p>
+        <pre><span class="c">$</span> python my_agent.py
+<span class="k">&gt;</span> Agent initialized.
+<span class="k">&gt;</span> Local context loaded.
+<span class="k">&gt;</span> Ready.
+
+<span class="c"># works perfectly.</span>
+<span class="c"># nobody else can use it.</span>
+<span class="c"># nobody can audit it.</span></pre>
+      </div>
+      <div>
+        <p class="codelabel">In an enterprise</p>
+        <div class="grid g2" style="gap:12px">
+          <div class="card plain"><p><strong>Identity</strong><br>Who is this agent acting as?</p></div>
+          <div class="card plain"><p><strong>RBAC</strong><br>What is it permitted to touch?</p></div>
+          <div class="card plain"><p><strong>Tracing</strong><br>What did it do, and why?</p></div>
+          <div class="card plain"><p><strong>Cost</strong><br>Who pays for it while it idles?</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:28px">
+      Running one agent is trivial. Running a thousand of them <b>safely</b> is a platform
+      engineering problem — the same one we already solved for microservices.
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section>
+  <p class="eyebrow">The infrastructure</p>
+  <h2>kagent: agents as Kubernetes objects</h2>
+  <p class="lead">A CNCF Sandbox project from the founders of Istio. An agent stops being a script
+  and becomes a resource the cluster manages.</p>
+  <div class="body">
+    <div class="grid g2">
+      <div>
+        <p class="codelabel">What you already ship</p>
+        <pre><span class="k">apiVersion:</span> apps/v1
+<span class="k">kind:</span> <span class="hl">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> payments-api
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> 3
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+        - <span class="k">image:</span> payments:1.4</pre>
+      </div>
+      <div>
+        <p class="codelabel">What you ship now</p>
+        <pre><span class="k">apiVersion:</span> kagent.dev/v1alpha2
+<span class="k">kind:</span> <span class="hl">Agent</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> clinical-ops-agent
+<span class="k">spec:</span>
+  <span class="k">declarative:</span>
+    <span class="k">modelConfig:</span> default-model-config
+    <span class="k">tools:</span>
+      - <span class="k">mcpServer:</span> {...}</pre>
+      </div>
+    </div>
+    <div class="callout accent" style="margin-top:26px">
+      If you know how to run a pod with <b>GitOps</b>, <b>mTLS</b> and <b>RBAC</b>,
+      you already know how to run an AI agent.
+    </div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section>
+  <p class="eyebrow">Architecture</p>
+  <h2>Decoupled by design</h2>
+  <p class="lead">Three separable concerns. Change any one of them without touching the other two.</p>
+  <div class="body">
+    <svg class="dg" viewBox="0 0 1000 120" role="img" aria-label="Controller above three components">
+      <rect class="hub" x="380" y="6" width="240" height="42" rx="9"/>
+      <text class="lbl" x="500" y="33" text-anchor="middle" style="font-weight:660">kagent controller</text>
+      <path class="wire" d="M500 48 V 78 M161 78 H 839 M161 78 V 120 M500 78 V 120 M839 78 V 120"
+            class="wire" stroke-width="1.2"/>
+    </svg>
+    <div class="grid g3">
+      <div class="card">
+        <p class="n">ModelConfig</p>
+        <p>Abstracts the provider — OpenAI, Anthropic, a local Ollama.
+        Swapping the brain is a one-line YAML change.</p>
+      </div>
+      <div class="card">
+        <p class="n">Agent CRD</p>
+        <p>Identity, instructions, and the exact list of tools this agent
+        is allowed to reach.</p>
+      </div>
+      <div class="card">
+        <p class="n">MCP tool servers</p>
+        <p>Kubernetes actions and enterprise APIs, mapped into the agent's
+        environment as callable tools.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section>
+  <p class="eyebrow">Governance</p>
+  <h2>Human in the loop</h2>
+  <p class="lead">Autonomy you can defend to an auditor: the agent proposes, the platform pauses,
+  a person decides.</p>
+  <div class="body">
+    <div class="flow">
+      <div class="step"><span>Agent decides to call<br><b>k8s_delete_resource</b></span></div>
+      <div class="arrow">→</div>
+      <div class="step"><span>Tool is listed under<br><b>requireApproval</b> in the CRD</span></div>
+      <div class="arrow">→</div>
+      <div class="stop"><span>EXECUTION<br>PAUSES</span></div>
+      <div class="arrow">→</div>
+      <div class="step"><span>Approval request<br>routed to a human</span></div>
+      <div class="arrow">→</div>
+      <div class="branch">
+        <div class="step go"><span><b>Approve</b> — it runs</span></div>
+        <div class="step no"><span><b>Reject</b> — agent adapts</span></div>
+      </div>
+    </div>
+    <div class="strip" style="margin-top:32px">
+      <div><b>Read-only tools run freely.</b> Nobody wants to approve a <code style="font-family:var(--mono);font-size:13px">get</code>.</div>
+      <div><b>Destructive actions hard-stop.</b> Not a warning in the transcript — the call does not execute.</div>
+      <div><b>The gate is declarative.</b> It lives in Git, reviewed like any other config.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section>
+  <p class="eyebrow">The runtime</p>
+  <h2>Agents are bursty. Pods are not.</h2>
+  <div class="body">
+    <svg class="dg" viewBox="0 0 1000 250" role="img" aria-label="Compute spikes briefly then idles for hours">
+      <line x1="70" y1="30" x2="70" y2="200" class="wire" stroke-width="1.2"/>
+      <line x1="70" y1="200" x2="960" y2="200" class="wire" stroke-width="1.2"/>
+      <text class="cap" x="18" y="120" transform="rotate(-90 18 120)" text-anchor="middle">CPU / RAM</text>
+      <text class="cap" x="515" y="228" text-anchor="middle">time</text>
+      <polyline class="wire2" points="70,196 120,42 168,193 960,196" stroke-width="2.4" opacity="1"/>
+      <rect x="150" y="30" width="290" height="34" rx="7" class="box"/>
+      <text class="lbl" x="166" y="52" style="font-size:14px">Thinking — 5 seconds — <tspan fill="var(--accent)" font-weight="640">warm pod</tspan></text>
+      <rect x="330" y="130" width="470" height="34" rx="7" class="box"/>
+      <text class="lbl" x="346" y="152" style="font-size:14px">Waiting for a human — 5 hours — <tspan fill="var(--gate)" font-weight="640">suspended to object storage</tspan></text>
+      <line x1="470" y1="164" x2="470" y2="194" class="gwire" stroke-dasharray="3 3"/>
+    </svg>
+    <div class="strip" style="margin-top:20px">
+      <div><b>The waste.</b> An agent waiting on a human holds a full pod, doing nothing.</div>
+      <div><b>Agent Substrate.</b> Checkpoints the idle agent's RAM and filesystem via gVisor.</div>
+      <div><b>The result.</b> Sub-second resume, and far more agents than pods.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section>
+  <p class="eyebrow">Theory into practice</p>
+  <h2>What I built</h2>
+  <div class="body">
+    <div class="grid g2" style="align-items:center;gap:44px">
+      <div>
+        <p style="font-size:20px">Built during the kagent hackathon, then rebuilt properly for this talk.</p>
+        <p style="font-size:20px">A federated MCP platform on Kubernetes: <strong>clinical data</strong> from a
+        server I contribute to but don't own, <strong>Kubernetes tooling</strong> from kagent, and a
+        <strong>service catalog</strong> — all behind a single endpoint, deployed by GitOps.</p>
+        <div class="kv" style="margin-top:20px">
+          <span class="tag">Kind + ArgoCD</span>
+          <span class="tag">kagent</span>
+          <span class="tag">agentgateway</span>
+          <span class="tag">MIMIC-IV</span>
+        </div>
+      </div>
+      <div class="card" style="padding:30px 32px">
+        <p style="font-size:17px;line-height:1.55"><strong>The point isn't the score.</strong></p>
+        <p style="font-size:17px;line-height:1.55;margin-top:12px">It's that none of the interesting pieces
+        were written by the same team — and it still assembles into one governed agent that a
+        non-engineer can drive from a chat window.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- map -->
+<section>
+  <p class="eyebrow">MCP_HACK//26</p>
+  <h2>Second place, worldwide</h2>
+  <div class="body">
+    <div class="grid" style="grid-template-columns:1.65fr 1fr;gap:36px;align-items:center">
+      <span class="shot"><img src="assets/mcp-hack-winners.png"
+        alt="MCP_HACK//26 winners map — eight countries marked as winners or runners-up"></span>
+      <div>
+        <p>Eight countries on the board.</p>
+        <p>The runner-up marker over <strong>Poland</strong> is this project — I've lived in
+        Poznań for five years.</p>
+        <p>The winner's marker over <strong>Mexico</strong> is someone else. Also Mexican.
+        I'm from Mexico City.</p>
+        <p style="margin-top:20px;color:var(--ink);font-size:20px">On that map, I'm both.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section>
+  <p class="eyebrow">Setting it up</p>
+  <h2>Two commands and a config file</h2>
+  <div class="body">
+    <div class="grid g2">
+      <div>
+        <p class="codelabel">In a terminal</p>
+        <pre><span class="k">export</span> OPENAI_API_KEY=sk-...
+
+make create   <span class="c"># cluster, ArgoCD, kagent,</span>
+              <span class="c"># m3, gateway, registry</span>
+make ports    <span class="c"># port-forwards</span></pre>
+      </div>
+      <div>
+        <p class="codelabel">.mcp.json — committed to the repo</p>
+        <pre>{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"mcp-clinical-platform"</span>: {
+      <span class="k">"type"</span>: <span class="hl">"http"</span>,
+      <span class="k">"url"</span>: <span class="hl">"http://localhost:4000/mcp"</span>
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <div class="strip" style="margin-top:26px">
+      <div><b>Launch Claude Code from the repo.</b> The server is project-scoped. From anywhere else
+      you get a session with no tools — and no error.</div>
+      <div><b>Port-forwards first.</b> Claude Code retries a dead connection three times at startup,
+      then stops trying.</div>
+      <div><b>There is no <code style="font-family:var(--mono);font-size:13px">make demo</code>.</b>
+      Proving an agent can drive a governed platform with a shell script would defeat the point.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section>
+  <p class="eyebrow">The demo</p>
+  <h2>What you're about to see</h2>
+  <div class="body">
+    <svg class="dg" viewBox="0 0 1000 190" style="margin-bottom:26px" role="img" aria-label="Claude Code through the gateway to kagent, model and tools">
+      <rect class="box" x="6" y="72" width="170" height="46" rx="9"/>
+      <text class="lbl" x="91" y="100" text-anchor="middle">Claude Code</text>
+      <path class="wire" d="M176 95 H 226" marker-end="url(#a)"/>
+      <rect class="box" x="226" y="72" width="170" height="46" rx="9"/>
+      <text class="lbl" x="311" y="94" text-anchor="middle">agentgateway</text>
+      <text class="cap" x="311" y="110" text-anchor="middle" style="font-family:var(--mono)">/mcp</text>
+      <path class="wire" d="M396 95 H 446" marker-end="url(#a)"/>
+      <rect class="hub" x="446" y="72" width="170" height="46" rx="9"/>
+      <text class="lbl" x="531" y="94" text-anchor="middle" style="font-weight:640">Agent CRD</text>
+      <text class="cap" x="531" y="110" text-anchor="middle">the worker</text>
+      <path class="wire" d="M616 95 H 656 V 40 H 706 M656 95 V 150 H 706"/>
+      <rect class="box" x="706" y="18" width="270" height="44" rx="9"/>
+      <text class="lbl" x="841" y="45" text-anchor="middle">ModelConfig — the reasoning</text>
+      <rect class="box" x="706" y="128" width="270" height="44" rx="9"/>
+      <text class="lbl" x="841" y="147" text-anchor="middle">MCP tool servers</text>
+      <text class="cap" x="841" y="163" text-anchor="middle">Kubernetes API · MIMIC-IV clinical data</text>
+      <defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+        <path d="M0,0 L7,3.5 L0,7 z" class="head"/></marker></defs>
+    </svg>
+    <p class="codelabel" style="margin-bottom:12px">Watch for</p>
+    <ol class="watch">
+      <li><b>Discovery.</b> Tools from three independently-built servers, federated behind one endpoint.</li>
+      <li class="gate"><b>The pause.</b> The agent writes its own query — and stops dead before running it.</li>
+      <li><b>The routing.</b> The approval lands in front of a human, who reads the query and decides.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 15 -->
+<section>
+  <p class="eyebrow">Live · prompt 1</p>
+  <div class="hdrow">
+    <h2>Borrow someone else's tool</h2>
+    <span class="tag go">runs freely</span>
+  </div>
+  <p class="lead">The server answering this is <b>m3</b>, built by an MIT researcher and his team.
+  I didn't fork it or rebuild it — I contributed the change that made it deployable here, upstream,
+  and then connected to it. <span style="font-family:var(--mono);font-size:14px">github.com/rafiattrach/m3</span></p>
+  <div class="body">
+    <div class="pbox">
+      <span class="caret">&gt;</span>
+      <span class="txt">Show me the race distribution across hospital admissions.</span>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <p class="n">What happens</p>
+        <p>Real numbers, immediately. <strong>Nobody is asked for permission.</strong></p>
+      </div>
+      <div class="card">
+        <p class="n">What it proves</p>
+        <p>This is a <strong>pre-reviewed</strong> tool — a human wrote and checked that query before
+        it ever shipped. Running ungated is a decision, not an oversight.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section>
+  <p class="eyebrow">Live · prompt 2</p>
+  <div class="hdrow">
+    <h2>Now make it think</h2>
+    <span class="tag gate">stops and waits</span>
+  </div>
+  <p class="lead">No pre-built answer exists for this one, so the agent has to write its own query —
+  against patient records.</p>
+  <div class="body">
+    <div class="pbox">
+      <span class="caret">&gt;</span>
+      <span class="txt">Ask kagent/clinical-ops-agent whether Medicare patients<br>have longer ICU stays than Medicaid patients.</span>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <p class="n">What happens</p>
+        <p>It reads the schema, writes SQL — and <strong>stops</strong>. Nothing runs. The request
+        waits at <code style="font-family:var(--mono);font-size:13px">localhost:8090</code> with the
+        exact query on screen to read first.</p>
+      </div>
+      <div class="card">
+        <p class="n">What it proves</p>
+        <p>Nothing here was destructive — it's a read. It paused because a language model wrote a
+        query against patient records thirty seconds ago and <strong>nobody had looked at it yet</strong>.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:22px">
+      Same database. Same agent. The gate isn't about how risky the data is —
+      it's about <b>who wrote the question</b>.
+    </div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section>
+  <p class="eyebrow">The takeaway</p>
+  <h2>A new cloud-native abstraction</h2>
+  <div class="body">
+    <div class="grid" style="gap:14px">
+      <div class="card" style="display:grid;grid-template-columns:220px 1fr;gap:26px;align-items:center">
+        <div>
+          <p class="n" style="margin:0 0 4px">Layer 1</p>
+          <h3 style="margin:0">The protocol</h3>
+          <p style="font-size:14px;color:var(--dim);margin-top:2px">MCP</p>
+        </div>
+        <p>Standardises tool discovery and execution. Resolves the integration bottleneck.</p>
+      </div>
+      <div class="card" style="display:grid;grid-template-columns:220px 1fr;gap:26px;align-items:center">
+        <div>
+          <p class="n" style="margin:0 0 4px">Layer 2</p>
+          <h3 style="margin:0">The infrastructure</h3>
+          <p style="font-size:14px;color:var(--dim);margin-top:2px">kagent</p>
+        </div>
+        <p>Brings agents to Kubernetes. Resolves orchestration, GitOps and human-in-the-loop governance.</p>
+      </div>
+      <div class="card" style="display:grid;grid-template-columns:220px 1fr;gap:26px;align-items:center">
+        <div>
+          <p class="n" style="margin:0 0 4px">Layer 3</p>
+          <h3 style="margin:0">The runtime</h3>
+          <p style="font-size:14px;color:var(--dim);margin-top:2px">Agent Substrate</p>
+        </div>
+        <p>Delivers serverless economics via gVisor checkpointing. Resolves idle compute waste.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:26px">
+      Agents are no longer laptop experiments. They are <b>governed, scalable,
+      cloud-native workloads</b>.
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section>
+  <p class="eyebrow">Take it with you</p>
+  <h2>Everything here is public</h2>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card">
+        <p class="n">The walkthrough</p>
+        <p>The demo, step by step, with copy-pasteable prompts.</p>
+        <p style="margin-top:12px"><a href="index.html">index.html</a></p>
+      </div>
+      <div class="card">
+        <p class="n">The technical detail</p>
+        <p>Setup, the gate in full, and the things that went wrong.</p>
+        <p style="margin-top:12px"><a href="deep-dive.html">deep-dive.html</a></p>
+      </div>
+      <div class="card">
+        <p class="n">The repository</p>
+        <p><code style="font-family:var(--mono);font-size:13px">make create</code> — one command,
+        from nothing to a running cluster.</p>
+        <p style="margin-top:12px"><a href="https://github.com/papagala/mcp-clinical-platform">github.com/papagala</a></p>
+      </div>
+    </div>
+    <div class="callout accent" style="margin-top:30px">
+      You don't need to adopt a new platform to start. You need <b>one tool someone else already built</b>,
+      and a place to put the gate.
+    </div>
+  </div>
+</section>
+
+<!-- references -->
+<section>
+  <p class="eyebrow">References</p>
+  <h2>Everything, with links</h2>
+  <div class="body">
+    <div class="refs">
+      <p>Al Attrach, R., Moreira, P., Fani, R., Umeton, R., &amp; Celi, L. A. (2025).
+      <em>Conversational LLMs simplify secure clinical data access, understanding, and analysis</em>.
+      arXiv. <a href="https://doi.org/10.48550/arXiv.2507.01053" target="_blank" rel="noopener">https://doi.org/10.48550/arXiv.2507.01053</a></p>
+
+      <p>Anthropic. (n.d.). <em>Model Context Protocol</em>. Retrieved August 28, 2026, from
+      <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">https://modelcontextprotocol.io</a></p>
+
+      <p>Gómez, O. (2026). <em>mcp-clinical-platform</em> [Computer software]. GitHub.
+      <a href="https://github.com/papagala/mcp-clinical-platform" target="_blank" rel="noopener">https://github.com/papagala/mcp-clinical-platform</a></p>
+
+      <p>Gómez, O. (2026, March 23). <em>Roche's Kubeflow story: Large models in seconds, costs cut,
+      security up with Bottlerocket</em> [Lightning talk]. CNCF-Hosted Co-located Events Europe 2026,
+      Amsterdam, Netherlands.
+      <a href="https://colocatedeventseu2026.sched.com/speaker/oswaldo12" target="_blank" rel="noopener">https://colocatedeventseu2026.sched.com/speaker/oswaldo12</a></p>
+
+      <p>Johnson, A., Bulgarelli, L., Pollard, T., Horng, S., Celi, L. A., &amp; Mark, R. (2023).
+      <em>MIMIC-IV clinical database demo</em> (Version 2.2). PhysioNet.
+      <a href="https://doi.org/10.13026/dp1f-ex47" target="_blank" rel="noopener">https://doi.org/10.13026/dp1f-ex47</a></p>
+
+      <p>Koletou, E., Mu, L., Stoyanova, R., Gomez Muñoz, J. O., … Chabbert, C. (2026). From research
+      to impact: A comprehensive platform for AI model deployment in drug discovery.
+      <em>Artificial Intelligence in the Life Sciences</em>, <em>9</em>, 100171.
+      <a href="https://doi.org/10.1016/j.ailsci.2026.100171" target="_blank" rel="noopener">https://doi.org/10.1016/j.ailsci.2026.100171</a></p>
+
+      <p>Solo.io. (n.d.). <em>agentgateway</em> [Computer software]. Retrieved August 28, 2026, from
+      <a href="https://agentgateway.dev/" target="_blank" rel="noopener">https://agentgateway.dev</a></p>
+
+      <p>Solo.io. (n.d.). <em>kagent</em> [Computer software]. Retrieved August 28, 2026, from
+      <a href="https://kagent.dev/" target="_blank" rel="noopener">https://kagent.dev</a></p>
+
+      <p>Solo.io. (2026). <em>Celebrating the winners of the 2026 hackathon for MCP AI agents</em>.
+      <a href="https://www.solo.io/blog/celebrating-the-winners-of-the-2026-hackathon-for-mcp-ai-agents" target="_blank" rel="noopener">https://www.solo.io/blog/celebrating-the-winners-of-the-2026-hackathon-for-mcp-ai-agents</a></p>
+    </div>
+  </div>
+</section>
+
+  <div class="chrome"><span>mcp-clinical-platform</span><span id="count"></span></div>
+  <div class="bar" id="bar"></div>
+</div></div>
+
+<div class="hint" id="hint">← → to navigate · F for fullscreen · D for dark</div>
+<button class="themebtn" id="theme" title="Toggle dark mode (D)">Dark</button>
+
+<script>
+(function(){
+  var stage = document.getElementById('stage');
+  var slides = [].slice.call(stage.querySelectorAll('section'));
+  var count = document.getElementById('count');
+  var bar = document.getElementById('bar');
+  var hint = document.getElementById('hint');
+  var themeBtn = document.getElementById('theme');
+  var i = 0;
+
+  function setTheme(dark){
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    themeBtn.textContent = dark ? 'Light' : 'Dark';
+    try { localStorage.setItem('deck-theme', dark ? 'dark' : 'light'); } catch (e) {}
+  }
+  function isDark(){ return document.documentElement.getAttribute('data-theme') === 'dark'; }
+  var saved = null;
+  try { saved = localStorage.getItem('deck-theme'); } catch (e) {}
+  if (/[?&]theme=dark/.test(location.search)) saved = 'dark';
+  else if (/[?&]theme=light/.test(location.search)) saved = 'light';
+  setTheme(saved === 'dark');
+  themeBtn.addEventListener('click', function(){ setTheme(!isDark()); });
+
+  function fit(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+
+  function show(n, push){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(el, k){ el.classList.toggle('on', k === i); });
+    count.textContent = (i + 1) + ' / ' + slides.length;
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    if (push !== false) history.replaceState(null, '', '#/' + (i + 1));
+  }
+
+  function fromHash(){
+    var m = /^#\/(\d+)$/.exec(location.hash);
+    return m ? parseInt(m[1], 10) - 1 : 0;
+  }
+
+  document.addEventListener('keydown', function(e){
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter'){
+      show(i + 1); e.preventDefault();
+    } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace'){
+      show(i - 1); e.preventDefault();
+    } else if (k === 'Home'){ show(0); e.preventDefault(); }
+    else if (k === 'End'){ show(slides.length - 1); e.preventDefault(); }
+    else if (k === 'f' || k === 'F'){
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }
+    else if (k === 'd' || k === 'D'){ setTheme(!isDark()); }
+    hint.classList.add('gone');
+  });
+
+  var x0 = null;
+  document.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) show(i + (dx < 0 ? 1 : -1));
+    x0 = null;
+  }, {passive:true});
+
+  var idle;
+  function poke(){
+    themeBtn.classList.remove('gone');
+    clearTimeout(idle);
+    idle = setTimeout(function(){ themeBtn.classList.add('gone'); }, 2500);
+  }
+  document.addEventListener('mousemove', poke);
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function(){ show(fromHash(), false); });
+  fit();
+  show(fromHash());
+  setTimeout(function(){ hint.classList.add('gone'); themeBtn.classList.add('gone'); }, 6000);
+})();
+</script>
+</body>
+</html>

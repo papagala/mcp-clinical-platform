@@ -1,5 +1,7 @@
 # kagent ArgoCD Application — GitOps deployment
-# Installs kagent v0.8.3 with CRDs into the kagent namespace
+# Installs kagent v0.9.12 with CRDs into the kagent namespace
+# v0.9.12 adds: HITL requireApproval on Agent tools, native Anthropic provider,
+# and the SandboxAgent / AgentHarness CRDs (Agent Substrate).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,13 +16,17 @@ spec:
     # kagent CRDs (installed first)
     - repoURL: ghcr.io/kagent-dev/kagent/helm
       chart: kagent-crds
-      targetRevision: 0.8.3
+      targetRevision: 0.10.0-rc3
     # kagent main chart
     - repoURL: ghcr.io/kagent-dev/kagent/helm
       chart: kagent
-      targetRevision: 0.8.3
+      targetRevision: 0.10.0-rc3
       helm:
         values: |
+          # Pull from ghcr.io: the default cr.kagent.dev registry does not carry
+          # the golang-adk runtime image for 0.9.12, so `runtime: go` agents fail
+          # with ImagePullBackOff. ghcr.io has the full set.
+          registry: ghcr.io
           providers:
             default: openAI
             openAI:

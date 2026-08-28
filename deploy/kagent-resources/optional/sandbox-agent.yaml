@@ -1,0 +1,29 @@
+# OPTIONAL — Agent Substrate demo. A SandboxAgent runs as a substrate actor
+# instead of a Deployment: idle actors are gVisor-checkpointed to object storage
+# and rehydrated on demand (scale-to-zero).
+#
+# Requires `make substrate` and a working gVisor runtime. Never part of `make create`.
+# Inspect: kubectl get sandboxagents -n kagent
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: clinical-substrate-agent
+  namespace: kagent
+spec:
+  type: Declarative
+  # platform defaults to agent-sandbox; substrate is required for the gVisor
+  # actor runtime, and spec.substrate is rejected without it.
+  platform: substrate
+  description: Clinical assistant running inside an Agent Substrate gVisor actor (scale-to-zero).
+  declarative:
+    runtime: go
+    modelConfig: default-model-config
+    systemMessage: |
+      You are clinical-substrate-agent, a Go ADK declarative agent running
+      inside an Agent Substrate gVisor actor. When idle you are checkpointed to
+      object storage and consume no compute; you rehydrate on demand.
+      When asked who you are, explain that you demonstrate scale-to-zero,
+      stateful agents on Kubernetes.
+  substrate:
+    workerPoolRef:
+      name: kagent-default
