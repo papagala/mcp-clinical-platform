@@ -177,6 +177,10 @@ svg.dg .head{fill:var(--wire)}
 .refs a{color:var(--dim);word-break:break-all;text-decoration:none}
 .refs a:hover{color:var(--accent)}
 
+.fn{font-size:13px;color:var(--dim);margin:20px 0 0;line-height:1.5}
+.fn em{font-style:italic}
+.fn .sep{color:var(--line-2);margin:0 5px}
+
 /* the typed prompt, shown as terminal input */
 .pbox{background:var(--code);border-radius:12px;padding:22px 26px;margin:0 0 22px;
   display:flex;align-items:baseline;gap:14px}
@@ -785,12 +789,13 @@ make ports    <span class="c"># port-forwards</span></pre>
 <section>
   <p class="eyebrow">Live · prompt 1</p>
   <div class="hdrow">
-    <h2>Borrow someone else's tool</h2>
+    <h2>Steal like an artist</h2>
     <span class="tag go">runs freely</span>
   </div>
-  <p class="lead">The server answering this is <b>m3</b>, built by an MIT researcher and his team.
-  I didn't fork it or rebuild it — I contributed the change that made it deployable here, upstream,
-  and then connected to it. <span style="font-family:var(--mono);font-size:14px">github.com/rafiattrach/m3</span></p>
+  <p class="lead">The server answering this is <b>m3</b>, built by researchers at MIT. I met its
+  author at a healthcare datathon in Poland I helped organise, on the core team. I didn't fork the
+  project or rebuild it — I contributed the change that made it deployable here, upstream, and then
+  connected to it.</p>
   <div class="body">
     <div class="pbox">
       <span class="caret">&gt;</span>
@@ -807,6 +812,10 @@ make ports    <span class="c"># port-forwards</span></pre>
         it ever shipped. Running ungated is a decision, not an oversight.</p>
       </div>
     </div>
+    <p class="fn"><em>Steal Like an Artist</em> — Austin Kleon, a book Patrick Harrison put on the
+    AI Engineering reading list at S&amp;P. It stuck.
+    <span class="sep">·</span> github.com/rafiattrach/m3
+    <span class="sep">·</span> healthcare-datathon.pl</p>
   </div>
 </section>
 
@@ -925,17 +934,23 @@ make ports    <span class="c"># port-forwards</span></pre>
       <p>Anthropic. (n.d.). <em>Model Context Protocol</em>. Retrieved August 28, 2026, from
       <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">https://modelcontextprotocol.io</a></p>
 
-      <p>Gómez, O. (2026). <em>mcp-clinical-platform</em> [Computer software]. GitHub.
+      <p>Gómez, O. (2026a). <em>mcp-clinical-platform</em> [Computer software]. GitHub.
       <a href="https://github.com/papagala/mcp-clinical-platform" target="_blank" rel="noopener">https://github.com/papagala/mcp-clinical-platform</a></p>
 
-      <p>Gómez, O. (2026, March 23). <em>Roche's Kubeflow story: Large models in seconds, costs cut,
+      <p>Gómez, O. (2026b, March 23). <em>Roche's Kubeflow story: Large models in seconds, costs cut,
       security up with Bottlerocket</em> [Lightning talk]. CNCF-Hosted Co-located Events Europe 2026,
       Amsterdam, Netherlands.
       <a href="https://colocatedeventseu2026.sched.com/speaker/oswaldo12" target="_blank" rel="noopener">https://colocatedeventseu2026.sched.com/speaker/oswaldo12</a></p>
 
+      <p>Healthcare Datathon Poland. (n.d.). <em>Healthcare Datathon</em>. Retrieved August 28, 2026,
+      from <a href="https://www.healthcare-datathon.pl/" target="_blank" rel="noopener">https://www.healthcare-datathon.pl</a></p>
+
       <p>Johnson, A., Bulgarelli, L., Pollard, T., Horng, S., Celi, L. A., &amp; Mark, R. (2023).
       <em>MIMIC-IV clinical database demo</em> (Version 2.2). PhysioNet.
       <a href="https://doi.org/10.13026/dp1f-ex47" target="_blank" rel="noopener">https://doi.org/10.13026/dp1f-ex47</a></p>
+
+      <p>Kleon, A. (2012). <em>Steal like an artist: 10 things nobody told you about being creative</em>.
+      Workman Publishing.</p>
 
       <p>Koletou, E., Mu, L., Stoyanova, R., Gomez Muñoz, J. O., … Chabbert, C. (2026). From research
       to impact: A comprehensive platform for AI model deployment in drug discovery.
