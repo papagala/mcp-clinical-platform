@@ -132,6 +132,15 @@ dl{margin:0}
 dt{font-family:var(--mono);font-size:13.5px;color:var(--text);font-weight:600;margin-top:16px}
 dd{margin:5px 0 0;color:var(--muted);font-size:14.5px}
 
+/* ---------- four moves ---------- */
+.moves{display:grid;gap:16px;grid-template-columns:repeat(2,1fr);margin-top:8px}
+@media(max-width:880px){.moves{grid-template-columns:1fr}}
+.move{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px;position:relative}
+.move .n{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.16em;margin-bottom:10px}
+.move h3{font-size:19px;margin:0 0 10px}
+.move p{font-size:15px;margin:0 0 10px;color:#b3c2d1}
+.move p.sub{font-size:13.5px;color:var(--dim);margin:0}
+
 /* ---------- presenter console ---------- */
 .console{background:linear-gradient(180deg,rgba(74,158,255,.07),transparent);
   border:1px solid var(--accent-dim);border-radius:14px;padding:26px;margin:0 0 26px}
@@ -184,6 +193,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
   <span class="brand">mcp-clinical-platform</span>
   <div class="links">
     <a href="#runsheet" style="color:var(--accent);font-weight:600">▶ Run the demo</a>
+    <a href="#story">The argument</a>
     <a href="#model">Mental model</a>
     <a href="#mcp">1 · MCP</a>
     <a href="#kagent">2 · kagent</a>
@@ -196,28 +206,65 @@ footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 
 <!-- ================= HERO ================= -->
 <header class="hero"><div class="wrap">
-  <p class="eyebrow">A guided walkthrough</p>
-  <h1>Agents as governed<br>Kubernetes workloads.</h1>
+  <p class="eyebrow">The live demo</p>
+  <h1>From an idea<br>to an agent.</h1>
   <p class="lede narrow">
-    A clinical AI platform where three tool servers federate behind one endpoint, agents are
-    Kubernetes resources under GitOps, and the dangerous ones <strong>cannot act without a human</strong>.
-    This page explains how each piece works and why — from first principles.
+    An idea — <em>"I want to ask questions of clinical data."</em> The tool already existed, built by
+    someone else. Four moves later it's a governed agent that can't touch patient records without a
+    human saying yes — and I never left the editor I already work in.
   </p>
-  <div class="badges">
-    <span class="badge hl">kagent v0.10.0-rc3</span>
-    <span class="badge">agentgateway v1.0.1</span>
-    <span class="badge">m3 · MIMIC-IV</span>
-    <span class="badge">agentregistry v0.3.3</span>
-    <span class="badge">ArgoCD GitOps</span>
-    <span class="badge">Kind</span>
-    <span class="badge hl">🥈 MCP_HACK//26</span>
-  </div>
   <div class="cta">
     <a class="btn primary" href="#runsheet">▶ Run the demo</a>
-    <a class="btn" href="#model">Learn the concepts</a>
+    <a class="btn" href="#model">How it works</a>
     <a class="btn" href="https://github.com/papagala/mcp-clinical-platform">Source</a>
   </div>
 </div></header>
+
+<!-- ================= THE FOUR MOVES ================= -->
+<section id="story"><div class="wrap">
+  <p class="eyebrow">The argument</p>
+  <h2>Four moves</h2>
+
+  <div class="moves">
+    <div class="move">
+      <div class="n">01</div>
+      <h3>The idea</h3>
+      <p>"I want to ask questions of clinical data."</p>
+      <p class="sub">That's it. No platform decision yet.</p>
+    </div>
+    <div class="move">
+      <div class="n">02</div>
+      <h3>Someone already built the tool</h3>
+      <p><strong>m3</strong> — MIMIC-IV clinical data — was built by colleagues at MIT. I didn't write
+      it. I connected to it.</p>
+      <p class="sub">That's what MCP buys you: tools built by different teams, plugged together without
+      anyone agreeing on a framework first.</p>
+    </div>
+    <div class="move">
+      <div class="n">03</div>
+      <h3>Make it a real agent</h3>
+      <p>An agent needs more than tools — an identity, somewhere to run, and rules about what it may
+      do unsupervised.</p>
+      <p class="sub">kagent gives it all three, as ordinary infrastructure. Including the gate: some
+      actions stop and wait for a person.</p>
+    </div>
+    <div class="move">
+      <div class="n">04</div>
+      <h3>Stay where you work</h3>
+      <p>kagent speaks the same protocol as everything else, so <strong>Claude Code drives all of
+      it</strong>.</p>
+      <p class="sub">No new console to learn, no platform to migrate into. The agent shows up next to
+      the tools you already had.</p>
+    </div>
+  </div>
+
+  <div class="note good" style="margin-top:26px">
+    <span class="lab">The point</span>
+    <p>Nothing here was built from scratch. Someone else's tool, an off-the-shelf gateway, and a
+    governance layer that already existed — assembled into something that can be pointed at real data
+    <strong>and trusted not to act alone</strong>. That's the distance from idea to agent.</p>
+  </div>
+</div></section>
 
 <!-- ================= PRESENTER CONSOLE ================= -->
 <section id="runsheet"><div class="wrap">
@@ -478,16 +525,8 @@ make status</pre><button class="cpbtn">Copy</button></div>
   <p class="eyebrow">Start here</p>
   <h2>The mental model</h2>
   <div class="narrow">
-    <p>
-      Everything here answers one question: <strong>what has to change for an AI agent to be allowed
-      near production?</strong>
-    </p>
-    <p>
-      A prototype agent is a script with API keys in a <code>.env</code>. It has no identity, no audit
-      trail, no access control, and nothing between a confident model and a destructive action. That's
-      fine on a laptop and unacceptable anywhere else.
-    </p>
-    <p>Three separate problems have to be solved, and it helps to keep them apart:</p>
+    <p>Move 03 — <em>make it a real agent</em> — is where most of the work lives. Three separate
+    problems, worth keeping apart:</p>
   </div>
 
   <div class="grid g3" style="margin:30px 0">
@@ -531,31 +570,19 @@ make status</pre><button class="cpbtn">Copy</button></div>
   <h2>MCP: one way to describe a tool</h2>
 
   <div class="narrow">
-    <h3 style="margin-top:0">The problem it solves</h3>
+    <h3 style="margin-top:0">Why it matters here</h3>
     <p>
-      Before MCP, connecting <em>M</em> models to <em>N</em> tools meant writing up to
-      <strong>M×N</strong> integrations — every model with its own function-calling dialect, every tool
-      with its own client. Add a model, rewrite everything.
+      <strong>m3 was built by someone else.</strong> Colleagues at MIT wrote the clinical data server;
+      I never touched its code. Because it speaks MCP, connecting to it was configuration, not
+      engineering.
     </p>
     <p>
-      MCP (Model Context Protocol) standardises the contract between them. A tool server describes what
-      it offers; any client speaks the same protocol to discover and call it. M×N becomes
-      <strong>M+N</strong>. It's the USB-C argument: one connector, many devices.
+      That's the whole argument: tools built by different teams, on different schedules, plug together
+      without anyone agreeing on a framework first. One connector, many devices.
     </p>
-
-    <h3>What a tool server actually exposes</h3>
-    <p>An MCP server can offer three kinds of thing. This platform mostly uses the first:</p>
-    <ul>
-      <li><strong>Tools</strong> — functions the model can call (<code>get_icu_stays</code>). Model-controlled.</li>
-      <li><strong>Resources</strong> — data the client can read (files, records). Application-controlled.</li>
-      <li><strong>Prompts</strong> — reusable templates the user can invoke. User-controlled.</li>
-    </ul>
-
-    <h3>Federation: three servers, one endpoint</h3>
     <p>
-      This platform runs three separate MCP servers. Rather than configuring three endpoints in every
-      client, <strong>agentgateway</strong> sits in front and multiplexes them into a single
-      <code>/mcp</code> URL, prefixing tool names by origin so nothing collides.
+      Three separate servers run here. <strong>agentgateway</strong> puts them behind a single address
+      and tags each tool with where it came from, so a client configures one URL and gets all three.
     </p>
   </div>
 
@@ -623,16 +650,15 @@ $ curl -s localhost:4000/mcp -d '{"method":"tools/list", ...}'
   <div class="narrow">
     <h3 style="margin-top:0">The core idea</h3>
     <p>
-      Kubernetes lets you define your own object types — <strong>Custom Resource Definitions</strong>
-      (CRDs). A <em>controller</em> watches those objects and continuously makes reality match what
-      they declare. That loop is how Deployments work.
+      You write a short file describing the agent — which model, which tools, what it's for. The
+      platform reads it and keeps that agent running, exactly as it already does for every other
+      service.
     </p>
     <p>
-      kagent applies the same pattern to agents. You write a YAML file describing an agent; the kagent
-      controller creates the pods, wires up the tools, and keeps it running. Which means agents inherit
-      everything Kubernetes already does: <strong>GitOps, RBAC, audit logging, namespaces, secrets</strong>.
+      The agent stops being <em>a script somebody runs</em> and becomes <strong>infrastructure
+      somebody reviews</strong>. Same deployment process, same access control, same audit trail, same
+      code review as the rest of the estate. Nothing new to invent.
     </p>
-    <p>The agent stops being a script somebody runs. It becomes infrastructure somebody reviews.</p>
 
     <h3>The four objects to know</h3>
     <dl>
