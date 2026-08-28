@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From an idea to an agent — MCP Clinical Platform</title>
+<meta name="description" content="How a question about clinical data became a governed AI agent — using a tool someone else built, without moving to a new platform.">
+<style>
+:root{
+  --bg:#0a0e14; --panel:#121a23; --panel-2:#16202b;
+  --line:#1e2b38; --line-2:#2a3d4f;
+  --text:#e6edf3; --muted:#93a3b3; --dim:#647585;
+  --accent:#4a9eff; --accent-dim:#2d6db5;
+  --gate:#f0a020; --ok:#3fb950;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+  line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.88em;background:rgba(74,158,255,.09);
+  padding:2px 6px;border-radius:4px;color:#b6d4f5}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px}
+.narrow{max-width:720px}
+section{padding:76px 0;border-top:1px solid var(--line)}
+h1,h2,h3{line-height:1.2;margin:0 0 16px;font-weight:650;letter-spacing:-.02em}
+h1{font-size:clamp(38px,6.5vw,66px)}
+h2{font-size:clamp(26px,4vw,36px)}
+h3{font-size:19px}
+p{margin:0 0 16px;color:var(--muted)}
+p strong{color:var(--text);font-weight:600}
+.lede{font-size:clamp(17px,2vw,20px);color:#aebdcc}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+  background:rgba(10,14,20,.85);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:24px;height:54px}
+nav .brand{font-family:var(--mono);font-size:13px;font-weight:600;white-space:nowrap}
+nav .links{display:flex;gap:20px;margin-left:auto;flex-wrap:wrap}
+nav a{font-size:13px;color:var(--muted)}
+nav a:hover{color:var(--text);text-decoration:none}
+
+.hero{padding:100px 0 80px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(900px 420px at 12% -10%,rgba(74,158,255,.15),transparent 70%)}
+.hero .wrap{position:relative}
+.cta{display:flex;gap:12px;margin-top:34px;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 20px;border-radius:8px;font-size:14px;
+  font-weight:600;border:1px solid var(--line-2);color:var(--text);background:var(--panel)}
+.btn:hover{border-color:var(--accent-dim);background:var(--panel-2);text-decoration:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#06121f}
+.btn.primary:hover{background:#68b0ff}
+
+.moves{display:grid;gap:16px;grid-template-columns:repeat(2,1fr);margin-top:8px}
+@media(max-width:860px){.moves{grid-template-columns:1fr}}
+.move{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px}
+.move .n{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.16em;margin-bottom:10px}
+.move h3{margin:0 0 10px}
+.move p{font-size:15px;margin:0 0 10px;color:#b3c2d1}
+.move p.sub{font-size:13.5px;color:var(--dim);margin:0}
+
+pre{background:#070b10;border:1px solid var(--line);border-radius:10px;
+  padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;
+  line-height:1.6;color:#c9d6e2;margin:0 0 16px}
+
+.note{border-left:3px solid var(--accent);background:rgba(74,158,255,.06);
+  padding:15px 20px;border-radius:0 8px 8px 0;margin:0 0 18px}
+.note.warn{border-left-color:var(--gate);background:rgba(240,160,32,.06)}
+.note.good{border-left-color:var(--ok);background:rgba(63,185,80,.06)}
+.note p{margin:0;color:#b9c8d6;font-size:14.5px}
+.note .lab{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:6px;color:var(--accent)}
+.note.warn .lab{color:var(--gate)} .note.good .lab{color:var(--ok)}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:3px 9px;
+  border-radius:999px;font-weight:600;white-space:nowrap;letter-spacing:.04em}
+.pill.stop{background:rgba(240,160,32,.14);color:var(--gate);border:1px solid rgba(240,160,32,.35)}
+.pill.go{background:rgba(63,185,80,.12);color:var(--ok);border:1px solid rgba(63,185,80,.3)}
+.contrast{display:grid;gap:14px;grid-template-columns:repeat(2,1fr);margin:22px 0 16px}
+@media(max-width:860px){.contrast{grid-template-columns:1fr}}
+.cw{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+  display:flex;flex-direction:column;gap:9px;font-size:14px;color:var(--muted);line-height:1.55}
+.prompt{background:var(--panel);border:1px solid var(--line-2);border-radius:14px;
+  padding:26px;margin:0 0 22px}
+.prompt .tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:10px}
+.prompt h3{font-size:21px;margin:0 0 8px}
+.prompt>p{font-size:15px}
+.cp{position:relative;margin-top:18px}
+.cp pre{padding-right:74px;font-size:14.5px;color:#dbe7f2;background:#060a0f;
+  border-color:var(--accent-dim);margin:0;white-space:pre-wrap}
+.cpbtn{position:absolute;top:10px;right:10px;font-family:var(--sans);font-size:11.5px;
+  font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;
+  background:var(--panel-2);border:1px solid var(--line-2);color:var(--muted)}
+.cpbtn:hover{border-color:var(--accent);color:var(--text)}
+.cpbtn.done{border-color:var(--ok);color:var(--ok)}
+.watch{font-size:14px;color:var(--muted);margin:16px 0 0}
+.watch b{color:var(--gate)}
+
+.uis{display:grid;gap:14px;grid-template-columns:repeat(3,1fr);margin-top:8px}
+@media(max-width:860px){.uis{grid-template-columns:1fr}}
+.ui{display:block;background:var(--panel);border:1px solid var(--line-2);
+  border-radius:10px;padding:16px 18px}
+.ui:hover{border-color:var(--accent);background:var(--panel-2);text-decoration:none}
+.ui .nm{font-weight:650;font-size:15px;color:var(--text);display:block}
+.ui .url{font-family:var(--mono);font-size:12px;color:var(--accent);margin:4px 0 6px;display:block}
+.ui .why{font-size:13px;color:var(--muted);line-height:1.5;display:block}
+
+.links{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:860px){.links{grid-template-columns:1fr}}
+.lk{display:block;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:15px 18px}
+.lk:hover{border-color:var(--accent-dim);background:var(--panel-2);text-decoration:none}
+.lk .t{font-weight:650;color:var(--text);font-size:15px;display:block}
+.lk .d{font-size:13.5px;color:var(--muted);margin-top:3px;line-height:1.5;display:block}
+
+footer{padding:52px 0;border-top:1px solid var(--line);color:var(--dim);font-size:13.5px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">mcp-clinical-platform</span>
+  <div class="links">
+    <a href="#moves">The idea</a>
+    <a href="#demo">The demo</a>
+    <a href="#links">Learn more</a>
+    <a href="slides.html">Slides</a>
+    <a href="deep-dive.html">Technical detail →</a>
+  </div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <p class="eyebrow">A live demo</p>
+  <h1>From an idea<br>to an agent.</h1>
+  <p class="lede narrow">
+    It started as a question: <em>"I want to ask things of clinical data."</em> The tool already
+    existed — someone else built it. Four moves later it's an agent that can't touch patient records
+    without a human saying yes, and I never left the editor I already work in.
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="#demo">▶ See the demo</a>
+    <a class="btn" href="slides.html">The talk</a>
+    <a class="btn" href="deep-dive.html">How it's built</a>
+  </div>
+</div></header>
+
+<section id="moves"><div class="wrap">
+  <p class="eyebrow">The argument</p>
+  <h2>Four moves</h2>
+
+  <div class="moves">
+    <div class="move">
+      <div class="n">01 — THE IDEA</div>
+      <h3>A question, not a project</h3>
+      <p>"I want to ask things of clinical data."</p>
+      <p class="sub">No platform decision yet. No budget. Just the question.</p>
+    </div>
+
+    <div class="move">
+      <div class="n">02 — THE TOOL</div>
+      <h3>Someone already built it</h3>
+      <p><a href="https://github.com/rafiattrach/m3" target="_blank" rel="noopener"><strong>m3</strong></a>
+      — a server for <a href="https://physionet.org/content/mimiciv/" target="_blank" rel="noopener">MIMIC-IV</a>
+      clinical data — is built and maintained by colleagues at MIT. I'm a contributor, not its author.</p>
+      <p class="sub">And to use it here I didn't fork it, wrap it, or ask them to change anything. It
+      already spoke the protocol. That's what a shared standard buys you: tools owned by different
+      teams, on different roadmaps, composed without a negotiation.</p>
+    </div>
+
+    <div class="move">
+      <div class="n">03 — THE AGENT</div>
+      <h3>Tools aren't enough</h3>
+      <p>An agent needs an identity, somewhere to run, and rules about what it may do unsupervised.</p>
+      <p class="sub">It becomes ordinary infrastructure — same deployment, same access control, same
+      review as everything else. Including a gate: some actions stop and wait for a person.</p>
+    </div>
+
+    <div class="move">
+      <div class="n">04 — NO NEW PLATFORM</div>
+      <h3>Stay where you work</h3>
+      <p>The agent platform speaks the same protocol as the tools, so
+      <strong>Claude Code drives all of it</strong>.</p>
+      <p class="sub">No new console to learn, nothing to migrate into. The agent shows up beside the
+      tools I already had.</p>
+    </div>
+  </div>
+
+  <div class="note good" style="margin-top:26px">
+    <span class="lab">The point</span>
+    <p>Nothing here was written from scratch. A clinical data server maintained by another team, an
+    off-the-shelf gateway, and a governance layer that already existed — composed into something you
+    can point at real data <strong>and trust not to act alone</strong>. That's the distance from an
+    idea to an agent.</p>
+  </div>
+</div></section>
+
+<section id="demo"><div class="wrap">
+  <p class="eyebrow">The demo</p>
+  <h2>Two prompts</h2>
+  <p class="narrow">Both typed into <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>
+  — no special console. <strong>They're a pair, and the difference between them is the whole
+  point:</strong> the first runs instantly with nobody asked, the second stops dead.</p>
+
+  <div class="contrast">
+    <div class="cw"><span class="pill go">✅ no approval</span>
+      <span>Prompt 1 uses a <strong>pre-reviewed</strong> tool. A human wrote and checked that query
+      before it ever shipped, so the agent may run it freely.</span></div>
+    <div class="cw"><span class="pill stop">⛔ approval required</span>
+      <span>Prompt 2 makes the agent <strong>write its own query</strong> against patient records.
+      Nobody has read it. So it stops.</span></div>
+  </div>
+  <p class="narrow" style="font-size:14.5px">Same database. Same agent. The gate isn't about how
+  risky the data is — it's about <strong>who wrote the question</strong>.</p>
+
+  <div class="prompt">
+    <div class="tag">Prompt 1 — the borrowed tool <span class="pill go" style="margin-left:8px">runs freely</span></div>
+    <h3>Ask a question of the data</h3>
+    <p>The server answering this is maintained by another team. I connected to it as-is.</p>
+    <div class="cp"><pre>Show me the race distribution across hospital admissions.</pre><button class="cpbtn">Copy</button></div>
+    <p class="watch"><b>Watch for:</b> real numbers, immediately — <strong>nobody was asked for
+    permission.</strong> That's deliberate. Reached through a server maintained by another team, at
+    another institution, running unmodified.</p>
+  </div>
+
+  <div class="prompt" style="border-color:rgba(240,160,32,.4)">
+    <div class="tag" style="color:var(--gate)">Prompt 2 — the gate <span class="pill stop" style="margin-left:8px">stops and waits</span></div>
+    <h3>Ask something it has to think about</h3>
+    <p>No pre-built answer exists for this, so the agent has to write its own database query — over
+    patient records.</p>
+    <div class="cp"><pre>Ask kagent/clinical-ops-agent whether Medicare patients have longer ICU stays than Medicaid patients.</pre><button class="cpbtn">Copy</button></div>
+    <p class="watch"><b>Watch for:</b> it explores the data, writes a query — and then
+    <strong>stops</strong>. Nothing runs. The platform holds the request until a human approves it,
+    with the exact query on screen to read first.</p>
+    <div class="note warn" style="margin-top:16px">
+      <span class="lab">Why this one matters</span>
+      <p>Nothing here was destructive — it's a read. It paused because a language model wrote a query
+      against patient records thirty seconds ago and <strong>nobody had looked at it yet</strong>.
+      That isn't the model choosing to be careful. It's the platform refusing to let it through.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:40px">Where the approval happens</h3>
+  <div class="uis">
+    <a class="ui" href="http://localhost:8090" target="_blank" rel="noopener">
+      <span class="nm">Agent console</span>
+      <span class="url">localhost:8090</span>
+      <span class="why">Where the paused request waits, and where a human approves or rejects it.</span>
+    </a>
+    <a class="ui" href="https://localhost:8080" target="_blank" rel="noopener">
+      <span class="nm">Deployment view</span>
+      <span class="url">localhost:8080</span>
+      <span class="why">Shows the agents managed like any other service, from version control.</span>
+    </a>
+    <a class="ui" href="http://localhost:12121" target="_blank" rel="noopener">
+      <span class="nm">Tool catalogue</span>
+      <span class="url">localhost:12121</span>
+      <span class="why">What's deployed and available — the platform describing itself.</span>
+    </a>
+  </div>
+
+  <div class="note" style="margin-top:22px">
+    <span class="lab">Following along?</span>
+    <p><code>make create</code> → <code>make ports</code> → <code>make registry-seed</code>, then open
+    Claude Code <strong>from inside the repo folder</strong>. Full instructions in the
+    <a href="deep-dive.html">technical detail</a>.</p>
+  </div>
+</div></section>
+
+<section id="links"><div class="wrap">
+  <p class="eyebrow">Learn more</p>
+  <h2>Everything referenced here</h2>
+  <p class="narrow">Start anywhere. All of it is open source.</p>
+
+
+  <h3 style="margin-top:40px">Try it yourself — a personal agent, in a minute</h3>
+  <p class="narrow">You don't need any of the infrastructure above to start. In
+  <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>, just
+  describe the agent you want in plain English and it writes the definition for you:</p>
+
+  <div class="cp"><pre>Create a subagent that reviews my pull requests for security issues.
+Save it to ~/.claude/agents/ so I can use it in any project.</pre><button class="cpbtn">Copy</button></div>
+
+  <p class="narrow">That's it — a file appears at <code>~/.claude/agents/</code> and the agent is
+  available immediately. No console, no deployment, no approval from anyone.</p>
+
+  <h4 style="margin-top:26px">Then give it tools</h4>
+  <p class="narrow">An agent with no tools can only talk. Adding one is a single command — this is
+  exactly how the clinical data server got connected in this demo:</p>
+  <div class="cp"><pre>claude mcp add --transport http my-tools https://example.com/mcp</pre><button class="cpbtn">Copy</button></div>
+  <p class="narrow" style="font-size:14.5px">Check it with <code>/mcp</code>. That's the whole
+  extension model: the agent you wrote in a sentence can now reach anything that speaks the protocol.</p>
+
+  <h3 style="margin-top:40px">Share it — plugins and marketplaces</h3>
+  <p class="narrow">Once an agent is useful, the next question is how a colleague gets it. Claude Code
+  packages agents, skills and tool connections into a <strong>plugin</strong>, and any Git repo can act
+  as a <strong>marketplace</strong>. Two commands for whoever you share it with:</p>
+
+  <div class="cp"><pre>/plugin marketplace add your-org/your-repo
+/plugin install your-plugin@your-marketplace</pre><button class="cpbtn">Copy</button></div>
+
+  <p class="narrow" style="font-size:14.5px">On your side it's one file —
+  <code>.claude-plugin/marketplace.json</code> at the repo root — listing the plugins it offers. The
+  plugin itself is just a folder with <code>agents/</code>, <code>skills/</code> and an optional
+  <code>.mcp.json</code>. Full structure in the
+  <a href="deep-dive.html#claude">technical detail</a>.</p>
+
+  <div class="note warn" style="margin-top:16px">
+    <span class="lab">Worth knowing</span>
+    <p>Plugins run with your privileges and hooks execute without prompting — only add marketplaces
+    you trust, exactly as you'd treat any dependency.</p>
+  </div>
+
+  <h3 style="margin-top:40px">Scale it — the same pattern, centrally</h3>
+  <p class="narrow">A personal agent is yours alone. The moment several teams share one — or it touches
+  regulated data — you need the things this demo shows: somewhere to run, an audit trail, and a gate.
+  That's the only real difference between the two ends.</p>
+
+  <p class="narrow"><strong>The shape doesn't change with the vendor.</strong> Tools, an agent, and a
+  governance layer. Whatever your organisation already runs, there's an equivalent — so what you learn
+  in Claude Code on your laptop transfers:</p>
+
+  <div class="links" style="margin-top:18px">
+    <a class="lk" href="https://kagent.dev/" target="_blank" rel="noopener">
+      <span class="t">kagent — used in this demo</span>
+      <span class="d">Agents as Kubernetes resources. Created at Solo.io, now a CNCF sandbox project,
+      Apache 2.0. Where the approval gate you just saw comes from.</span>
+    </a>
+    <a class="lk" href="https://aws.amazon.com/bedrock/agentcore/" target="_blank" rel="noopener">
+      <span class="t">AWS — Amazon Bedrock AgentCore</span>
+      <span class="d">Build, deploy and run agents with any framework or model, with identity and observability handled.</span>
+    </a>
+    <a class="lk" href="https://azure.microsoft.com/en-us/products/ai-foundry" target="_blank" rel="noopener">
+      <span class="t">Microsoft — Foundry Agent Service</span>
+      <span class="d">Part of Microsoft Foundry. Agents that automate business processes "while keeping humans in control".</span>
+    </a>
+    <a class="lk" href="https://developers.openai.com/api/docs/guides/agents" target="_blank" rel="noopener">
+      <span class="t">OpenAI — Agents SDK</span>
+      <span class="d">Manages the agent loop, multi-agent orchestration, sessions, tracing and guardrails.</span>
+    </a>
+    <a class="lk" href="https://docs.claude.com/en/api/agent-sdk/overview" target="_blank" rel="noopener">
+      <span class="t">Anthropic — Claude Agent SDK</span>
+      <span class="d">The same harness Claude Code is built on, for building your own agents.</span>
+    </a>
+    <a class="lk" href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">
+      <span class="t">MCP — the common layer</span>
+      <span class="d">The one piece shared across all of the above. Tools you connect today keep working if the platform changes.</span>
+    </a>
+  </div>
+
+  <div class="note good" style="margin-top:20px">
+    <span class="lab">Why this is reusable</span>
+    <p>Every platform above solves the same three problems in the same order — connect tools, give the
+    agent somewhere to run, decide what it may do unattended. Pick whichever your organisation already
+    uses. <strong>The one thing worth standardising on is the tool layer</strong>, because that's what
+    you'd otherwise rewrite every time the platform underneath changes.</p>
+  </div>
+
+  <h3 style="margin-top:40px">Everything referenced here</h3>
+
+  <h4 style="margin-top:26px">The pieces</h4>
+  <div class="links">
+    <a class="lk" href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">
+      <span class="t">MCP — Model Context Protocol</span>
+      <span class="d">The shared standard that let me use someone else's tool without writing an integration.</span>
+    </a>
+    <a class="lk" href="https://kagent.dev/" target="_blank" rel="noopener">
+      <span class="t">kagent</span>
+      <span class="d">Turns an agent into ordinary infrastructure — deployment, access control, approval gates.</span>
+    </a>
+    <a class="lk" href="https://agentgateway.dev/" target="_blank" rel="noopener">
+      <span class="t">agentgateway</span>
+      <span class="d">Puts several tool servers behind one address, so a client configures one thing.</span>
+    </a>
+    <a class="lk" href="https://github.com/rafiattrach/m3" target="_blank" rel="noopener">
+      <span class="t">m3 — the clinical data server</span>
+      <span class="d">Built and maintained at MIT. Used here unmodified — I'm a contributor, not its author.</span>
+    </a>
+    <a class="lk" href="https://claude.com/claude-code" target="_blank" rel="noopener">
+      <span class="t">Claude Code</span>
+      <span class="d">Where the whole demo is driven from. No separate console.</span>
+    </a>
+    <a class="lk" href="https://argoproj.github.io/argo-cd/" target="_blank" rel="noopener">
+      <span class="t">ArgoCD</span>
+      <span class="d">Keeps what's running matched to what's in version control.</span>
+    </a>
+  </div>
+
+  <h3 style="margin-top:34px">Going deeper</h3>
+  <div class="links">
+    <a class="lk" href="https://kagent.dev/docs/kagent/examples/human-in-the-loop/" target="_blank" rel="noopener">
+      <span class="t">Human-in-the-Loop, upstream docs</span>
+      <span class="d">The approval mechanism this demo is built on.</span>
+    </a>
+    <a class="lk" href="https://doi.org/10.48550/arXiv.2507.01053" target="_blank" rel="noopener">
+      <span class="t">The m3 paper (arXiv)</span>
+      <span class="d">Al Attrach et al. — conversational access to clinical data.</span>
+    </a>
+    <a class="lk" href="https://physionet.org/content/mimiciv/" target="_blank" rel="noopener">
+      <span class="t">MIMIC-IV</span>
+      <span class="d">The de-identified ICU dataset. This demo uses a ~100-patient public subset.</span>
+    </a>
+    <a class="lk" href="https://kind.sigs.k8s.io/" target="_blank" rel="noopener">
+      <span class="t">Kind</span>
+      <span class="d">Runs the whole platform on a laptop. No cloud account needed.</span>
+    </a>
+    <a class="lk" href="deep-dive.html">
+      <span class="t">→ Technical detail</span>
+      <span class="d">Setup, Claude Code config, how the gate actually works, and what broke along the way.</span>
+    </a>
+    <a class="lk" href="https://github.com/papagala/mcp-clinical-platform" target="_blank" rel="noopener">
+      <span class="t">This repository</span>
+      <span class="d">Everything above, reproducible in three commands.</span>
+    </a>
+  </div>
+
+  <div class="note" style="margin-top:28px">
+    <p>Clinical results shown are from the MIMIC-IV <strong>demo subset</strong> (~100 patients) and
+    are illustrative only — not a basis for clinical or operational decisions.</p>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>
+    <strong style="color:var(--text)">MCP Clinical Platform</strong> · Apache 2.0<br>
+    kagent · agentgateway · m3 · ArgoCD · MCP
+  </div>
+  <div style="text-align:right">
+    <a href="deep-dive.html">Technical detail</a> ·
+    <a href="https://github.com/papagala/mcp-clinical-platform">Source</a><br>
+    2nd place, <a href="https://aihackathon.dev/">MCP_HACK//26</a> 🥈
+  </div>
+</div></footer>
+
+<script>
+document.querySelectorAll('.cp').forEach(function (block) {
+  var btn = block.querySelector('.cpbtn'), pre = block.querySelector('pre');
+  if (!btn || !pre) return;
+  btn.addEventListener('click', function () {
+    var text = pre.innerText.replace(/\s+$/, '');
+    var done = function () {
+      btn.textContent = 'Copied'; btn.classList.add('done');
+      setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1400);
+    };
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { btn.textContent = 'Copy failed'; }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  });
+});
+</script>
+
+</body>
+</html>

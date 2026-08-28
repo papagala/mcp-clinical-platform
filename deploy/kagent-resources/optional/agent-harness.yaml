@@ -1,0 +1,23 @@
+# OPTIONAL — AgentHarness: a long-running coding-agent sandbox (OpenClaw)
+# whose lifecycle kagent manages, surfaced in the kagent UI alongside agents.
+#
+# Requires `make substrate` and a substrate WorkerPool. Never part of `make create`.
+# Inspect: kubectl get agentharnesses -n kagent
+apiVersion: kagent.dev/v1alpha2
+kind: AgentHarness
+metadata:
+  name: clinical-shell
+  namespace: kagent
+spec:
+  backend: openclaw
+  description: "OpenClaw shell for clinical-platform experiments, on Agent Substrate."
+  modelConfigRef: default-model-config
+  runtime: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default
+    # OpenClaw gateway Bearer token; the Secret must hold a "token" key.
+    # `make substrate` seeds a placeholder so the resource validates — the
+    # harness only becomes Ready against a real OpenClaw gateway.
+    gatewayTokenSecretRef:
+      name: openclaw-gateway-token

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technical detail — MCP Clinical Platform</title>
+<meta name="description" content="Setup, Claude Code configuration, how the approval gate is enforced, and everything that broke along the way.">
+<style>
+:root{
+  --bg:#0a0e14; --panel:#121a23; --panel-2:#16202b;
+  --line:#1e2b38; --line-2:#2a3d4f;
+  --text:#e6edf3; --muted:#93a3b3; --dim:#647585;
+  --accent:#4a9eff; --accent-dim:#2d6db5;
+  --gate:#f0a020; --ok:#3fb950; --bad:#f85149;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+  line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.88em;background:rgba(74,158,255,.09);
+  padding:2px 6px;border-radius:4px;color:#b6d4f5}
+pre code{background:none;padding:0;color:inherit}
+.wrap{max-width:940px;margin:0 auto;padding:0 24px}
+.narrow{max-width:760px}
+section{padding:70px 0;border-top:1px solid var(--line)}
+h1,h2,h3,h4{line-height:1.25;margin:0 0 14px;font-weight:650;letter-spacing:-.02em}
+h1{font-size:clamp(32px,5vw,50px)}
+h2{font-size:clamp(24px,3.5vw,32px)}
+h3{font-size:19px;margin-top:34px}
+h4{font-size:16px;margin-top:24px;margin-bottom:8px}
+p{margin:0 0 16px;color:var(--muted)}
+p strong,li strong{color:var(--text);font-weight:600}
+ul,ol{color:var(--muted);margin:0 0 16px;padding-left:22px}
+li{margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+  background:rgba(10,14,20,.85);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:22px;height:54px}
+nav .brand{font-family:var(--mono);font-size:13px;font-weight:600;white-space:nowrap}
+nav .links{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}
+nav a{font-size:13px;color:var(--muted)}
+nav a:hover{color:var(--text);text-decoration:none}
+
+pre{background:#070b10;border:1px solid var(--line);border-radius:10px;
+  padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13px;
+  line-height:1.65;color:#c9d6e2;margin:0 0 16px}
+pre .c{color:var(--dim)} pre .k{color:#7ee3a8} pre .v{color:#e8c07d}
+pre .g{color:var(--gate);font-weight:600} pre .o{color:var(--ok)} pre .b{color:var(--bad)}
+
+table{border-collapse:collapse;width:100%;margin:0 0 16px;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--text);font-weight:600;font-size:13px}
+td{color:var(--muted)}
+td strong{color:var(--text)}
+
+.note{border-left:3px solid var(--accent);background:rgba(74,158,255,.06);
+  padding:15px 20px;border-radius:0 8px 8px 0;margin:0 0 18px}
+.note.warn{border-left-color:var(--gate);background:rgba(240,160,32,.06)}
+.note.good{border-left-color:var(--ok);background:rgba(63,185,80,.06)}
+.note.stop{border-left-color:var(--bad);background:rgba(248,81,73,.06)}
+.note p{margin:0;color:#b9c8d6;font-size:14.5px}
+.note p+p{margin-top:9px}
+.note .lab{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:6px;color:var(--accent)}
+.note.warn .lab{color:var(--gate)} .note.good .lab{color:var(--ok)} .note.stop .lab{color:var(--bad)}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:3px 9px;
+  border-radius:999px;font-weight:600;white-space:nowrap}
+.pill.stop{background:rgba(240,160,32,.14);color:var(--gate);border:1px solid rgba(240,160,32,.35)}
+.pill.go{background:rgba(63,185,80,.12);color:var(--ok);border:1px solid rgba(63,185,80,.3)}
+.pill.no{background:rgba(248,81,73,.12);color:var(--bad);border:1px solid rgba(248,81,73,.3)}
+
+.grid{display:grid;gap:16px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.card h4{margin-top:0}
+.card p{font-size:14px;margin-bottom:10px}
+.card p:last-child{margin-bottom:0}
+
+.toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px}
+.toc ol{margin:0;padding-left:20px}
+.toc li{margin-bottom:6px;font-size:15px}
+
+dl{margin:0}
+dt{font-family:var(--mono);font-size:13.5px;color:var(--text);font-weight:600;margin-top:15px}
+dd{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+
+footer{padding:48px 0;border-top:1px solid var(--line);color:var(--dim);font-size:13.5px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">← <a href="index.html" style="color:var(--accent)">the demo</a></span>
+  <div class="links">
+    <a href="#setup">Setup</a>
+    <a href="#claude">Claude Code</a>
+    <a href="#layers">Architecture</a>
+    <a href="#gate">The gate</a>
+    <a href="#notes">Field notes</a>
+    <a href="#glossary">Glossary</a>
+  </div>
+</div></nav>
+
+<section style="border-top:none;padding-top:70px"><div class="wrap">
+  <p class="eyebrow">Technical detail</p>
+  <h1>How it's actually built</h1>
+  <p class="lede narrow" style="font-size:18px;color:#aebdcc">
+    The <a href="index.html">demo page</a> makes the argument. This one shows the wiring: setup,
+    Claude Code configuration, how the approval gate is enforced, and the things that broke on the way.
+  </p>
+
+  <div class="toc narrow" style="margin-top:30px">
+    <ol>
+      <li><a href="#setup">Setup — three commands</a></li>
+      <li><a href="#claude">Connecting Claude Code</a></li>
+      <li><a href="#layers">Architecture — three layers</a></li>
+      <li><a href="#gate">The approval gate, in detail</a></li>
+      <li><a href="#substrate">Agent Substrate — why it's not in the demo</a></li>
+      <li><a href="#notes">Field notes — what broke</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </div>
+</div></section>
+
+<!-- ============ SETUP ============ -->
+<section id="setup"><div class="wrap">
+  <p class="eyebrow">1</p>
+  <h2>Setup</h2>
+  <p class="narrow">Prerequisites: <a href="https://kind.sigs.k8s.io/" target="_blank" rel="noopener">kind</a>,
+  kubectl, helm, and an OpenAI key. Roughly 10 minutes on first run — it pulls a lot of images.</p>
+
+<pre>brew install kind kubectl helm
+export OPENAI_API_KEY=sk-your-key
+
+make create         <span class="c"># cluster + ArgoCD + kagent + m3 + gateway + registry</span>
+make ports          <span class="c"># port-forwards</span>
+make registry-seed  <span class="c"># publish this platform into its own catalogue</span></pre>
+
+  <p>There is deliberately <strong>no <code>make demo</code></strong>. The demo runs in Claude Code —
+  proving "an agent can drive a governed platform" with a shell script would defeat the point.</p>
+
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>make status</code></td><td>Pods and deployment health</td></tr>
+    <tr><td><code>make approve</code></td><td>Finds the pending approval and opens it</td></tr>
+    <tr><td><code>make logs</code></td><td>Streams kagent + m3 logs</td></tr>
+    <tr><td><code>make claude-model</code></td><td>Adds an Anthropic model config and prints the one-line swap</td></tr>
+    <tr><td><code>make destroy</code></td><td>Deletes the cluster</td></tr>
+  </table>
+
+  <div class="note warn">
+    <span class="lab">Expected on a cold build</span>
+    <p>The kagent controller may sit in <code>CrashLoopBackOff</code> for a few minutes while its
+    database finishes pulling. It self-heals. If it's still crashing after ~10 minutes:
+    <code>kubectl delete pod -n kagent -l app.kubernetes.io/component=controller</code> clears the
+    backoff immediately.</p>
+  </div>
+</div></section>
+
+<!-- ============ CLAUDE CODE ============ -->
+<section id="claude"><div class="wrap">
+  <p class="eyebrow">2</p>
+  <h2>Connecting Claude Code</h2>
+
+  <div class="note stop">
+    <span class="lab">Two things that silently kill it</span>
+    <p><strong>1. Launch from inside the repo.</strong> The server is project-scoped — it lives in this
+    repo's <code>.mcp.json</code> and does not exist in any other directory. Run <code>claude</code>
+    from <code>~</code> and you get a session with no tools and no error.</p>
+    <p><strong>2. Start the port-forwards first.</strong> Claude Code retries a failed connection three
+    times at startup, then stops trying.</p>
+  </div>
+
+  <p>The repo ships a project-scoped <code>.mcp.json</code>, so opening the folder is enough. It first
+  appears as <code>⏸ Pending approval</code> — Claude Code won't enable a cloned repo's servers without
+  consent. Approve it and it flips to Connected.</p>
+
+<pre><span class="c">// .mcp.json — "type" is required; a url with no type is skipped</span>
+{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"mcp-clinical-platform"</span>: {
+      <span class="k">"type"</span>: <span class="v">"http"</span>,
+      <span class="k">"url"</span>: <span class="v">"http://localhost:4000/mcp"</span>
+    }
+  }
+}</pre>
+
+  <p>To add it by hand from anywhere:</p>
+<pre>claude mcp add --transport http mcp-clinical-platform http://localhost:4000/mcp
+claude mcp list   <span class="c"># want: ✔ Connected</span></pre>
+
+  <h3>What ships in the repo</h3>
+  <table>
+    <tr><th>Asset</th><th>Purpose</th><th>Gated</th></tr>
+    <tr><td><code>.mcp.json</code></td><td>Project-scoped server config, auto-detected</td><td>—</td></tr>
+    <tr><td><code>clinical-analyst</code></td><td>Subagent — cohort analysis, labs, demographics</td><td><span class="pill go">no</span></td></tr>
+    <tr><td><code>clinical-ops</code></td><td>Subagent — platform health, restarts, raw SQL</td><td><span class="pill stop">⛔ yes</span></td></tr>
+    <tr><td><code>/demo</code></td><td>Skill that walks the demo with pauses</td><td>—</td></tr>
+    <tr><td><code>.claude/settings.json</code></td><td>Allowlists the MCP tools so no prompts interrupt the demo</td><td>—</td></tr>
+    <tr><td><code>CLAUDE.md</code></td><td>Architecture and invariants for any Claude Code session here</td><td>—</td></tr>
+  </table>
+
+  <p>All three agent definitions are written in <strong>CO-STAR</strong> — Context, Objective, Style,
+  Tone, Audience, Response. Worth reading as examples: <code>.claude/agents/</code> and
+  <code>.claude/skills/demo/SKILL.md</code>.</p>
+
+  <h4>Tool naming, if you write your own subagent</h4>
+  <p>Connected MCP tools are namespaced <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>. Name them
+  explicitly in frontmatter — a <code>*</code> wildcard silently binds nothing and the subagent quietly
+  falls back to shell:</p>
+<pre><span class="k">tools</span>: <span class="v">mcp__mcp-clinical-platform__kagent_invoke_agent</span>, Read, Bash</pre>
+
+  <div class="note warn">
+    <span class="lab">Troubleshooting</span>
+    <p><code>✘ Failed to connect</code> — port-forward is down. <code>make ports</code>, then
+    <strong>Reconnect</strong> in <code>/mcp</code>; no session restart needed.<br>
+    <strong>Not listed at all</strong> — wrong directory.</p>
+  </div>
+</div></section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section id="layers"><div class="wrap">
+  <p class="eyebrow">3</p>
+  <h2>Architecture</h2>
+  <p class="narrow">Three separate problems, worth keeping apart.</p>
+
+  <div class="grid" style="margin-top:24px">
+    <div class="card">
+      <h4 style="color:var(--accent)">Layer 1 · Protocol — MCP</h4>
+      <p><strong>How does an agent find tools?</strong></p>
+      <p>Before MCP, connecting <em>M</em> models to <em>N</em> tools meant up to M×N bespoke
+      integrations. MCP standardises the contract, so it becomes M+N.</p>
+      <p>Three servers run here — kagent, m3, agentregistry — federated by
+      <strong>agentgateway</strong> behind one <code>/mcp</code> URL, with tools prefixed by origin.
+      <strong>m3 is maintained at MIT</strong> and runs here unmodified — connecting to it was
+      configuration, not engineering.</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent)">Layer 2 · Infrastructure — kagent</h4>
+      <p><strong>Where does the agent live?</strong></p>
+      <p>Kubernetes lets you define custom object types; a controller keeps reality matching what they
+      declare. kagent applies that to agents — you write a YAML file, the controller runs it.</p>
+      <p>Agents inherit GitOps, RBAC, audit logging and namespaces for free. The agent stops being a
+      script somebody runs and becomes infrastructure somebody reviews.</p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--accent)">Layer 3 · Governance</h4>
+      <p><strong>What stops it doing harm?</strong></p>
+      <p>Named tools block mid-execution and wait for a human — enforced by the control plane, not by
+      asking the model nicely. <a href="#gate">Detail below.</a></p>
+    </div>
+    <div class="card">
+      <h4 style="color:var(--dim)">Layer 4 · Runtime — <em>not used</em></h4>
+      <p>Agent Substrate checkpoints idle agents to object storage via gVisor for scale-to-zero.
+      <a href="#substrate">Excluded from this demo</a> — gVisor actors don't start on Kind/macOS.</p>
+    </div>
+  </div>
+
+  <h3>The four kagent objects</h3>
+  <dl>
+    <dt>ModelConfig</dt>
+    <dd>Which LLM, and where the key lives. Decoupled from the agent, so you can swap provider with a one-line patch.</dd>
+    <dt>Agent</dt>
+    <dd>System prompt, which tools it may use, and which of those require approval.</dd>
+    <dt>RemoteMCPServer</dt>
+    <dd>A tool server referenced by name — here <code>kagent-tool-server</code>, which provides the Kubernetes tools.</dd>
+    <dt>Service (with appProtocol)</dt>
+    <dd>An in-cluster MCP server discovered natively — how the agent reaches <code>m3</code> with no hardcoded URL.</dd>
+  </dl>
+
+  <h3>Two agents, deliberately different</h3>
+  <table>
+    <tr><th>Agent</th><th>Role</th><th>Gates</th></tr>
+    <tr><td><code>medical-data-agent</code></td><td>Read-only clinical analysis</td><td><span class="pill go">none</span></td></tr>
+    <tr><td><code>clinical-ops-agent</code></td><td>Platform SRE for the clinical data plane</td><td><span class="pill stop">⛔ 4 tools</span></td></tr>
+  </table>
+  <p>The contrast <em>is</em> the governance story — keeping one ungated is the point.</p>
+</div></section>
+
+<!-- ============ THE GATE ============ -->
+<section id="gate"><div class="wrap">
+  <p class="eyebrow">4</p>
+  <h2>The approval gate</h2>
+
+  <h3>Two gates, two different reasons</h3>
+  <p class="narrow">Worth internalising: <strong>"dangerous" isn't one thing.</strong></p>
+
+  <div class="grid" style="margin:22px 0">
+    <div class="card">
+      <h4 style="margin-top:0;color:var(--gate)">🛡️ Safety gate</h4>
+      <p><em>Pause because something will break.</em></p>
+      <p><code>k8s_delete_resource</code>, <code>k8s_apply_manifest</code>,
+      <code>k8s_patch_resource</code> — destructive mutations against a running clinical service.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0;color:#a371f7">📋 Governance gate</h4>
+      <p><em>Pause because nothing breaks — but patient data is about to be read.</em></p>
+      <p><code>execute_mimic_query</code> is read-only. There is no safety risk. The risk is
+      <strong>disclosure</strong>.</p>
+    </div>
+  </div>
+
+  <p>Why gate one m3 tool and not the others, when they all read the same database? Because of
+  <strong>who wrote the query</strong>:</p>
+
+  <table>
+    <tr><th>Tool</th><th>Query authored by</th><th></th></tr>
+    <tr><td><code>get_race_distribution</code></td><td>a human, reviewed before shipping</td><td><span class="pill go">runs freely</span></td></tr>
+    <tr><td><code>get_icu_stays</code></td><td>a human, reviewed before shipping</td><td><span class="pill go">runs freely</span></td></tr>
+    <tr><td><code>execute_mimic_query</code></td><td><strong>the model, at runtime</strong></td><td><span class="pill stop">⛔ approval</span></td></tr>
+  </table>
+
+  <h3>In YAML</h3>
+<pre><span class="k">tools</span>:
+  - <span class="k">type</span>: <span class="v">McpServer</span>
+    <span class="k">mcpServer</span>:
+      <span class="k">name</span>: <span class="v">kagent-tool-server</span>
+      <span class="k">toolNames</span>:
+        - k8s_get_resources        <span class="c"># inspect — ungated</span>
+        - k8s_delete_resource      <span class="c"># mutate</span>
+        - k8s_apply_manifest
+        - k8s_patch_resource
+      <span class="g">requireApproval</span>:            <span class="c"># ⛔ these block</span>
+        - <span class="g">k8s_delete_resource</span>
+        - <span class="g">k8s_apply_manifest</span>
+        - <span class="g">k8s_patch_resource</span></pre>
+
+  <div class="note warn">
+    <span class="lab">CRD constraint</span>
+    <p>Every name in <code>requireApproval</code> must also appear in <code>toolNames</code>. The CRD
+    enforces this with a CEL rule — you cannot gate a tool the agent was never granted.</p>
+  </div>
+
+  <h3>Proof it's enforced, not prompted</h3>
+  <p>The fair objection: maybe the model is only <em>saying</em> it will ask. So it was tested
+  adversarially — ordered to skip confirmation:</p>
+<pre><span class="c"># the model complied, and emitted the call with real args</span>
+<span class="k">"name"</span>: <span class="v">"k8s_delete_resource"</span>
+<span class="k">"args"</span>: { <span class="k">"namespace"</span>: <span class="v">"kagent"</span>, <span class="k">"resource_name"</span>: <span class="v">"m3-68c69fb9d6-rmw5t"</span> }
+
+<span class="c"># the runtime refused to execute it</span>
+<span class="k">"response"</span>: { <span class="k">"status"</span>: <span class="b">"confirmation_requested"</span> }
+<span class="k">"state"</span>: <span class="b">"TASK_STATE_INPUT_REQUIRED"</span>
+
+<span class="c"># and the pod was untouched</span>
+m3-68c69fb9d6-rmw5t   <span class="o">Running</span>   <span class="c"># unchanged</span></pre>
+
+  <div class="note good">
+    <span class="lab">Result</span>
+    <p>Enforced by the runtime. Social engineering ("approval already granted by the platform team")
+    doesn't bypass it either. Once approved, the action really does execute — the pod restarts with a
+    new name and an age in seconds.</p>
+  </div>
+
+  <h3>Closing the bypass</h3>
+  <p><code>requireApproval</code> governs the <em>agent's</em> use of a tool — not the endpoint. The
+  same tool was reachable ungated straight through the gateway, and Claude Code found that path
+  unprompted. So it's denied at the gateway too:</p>
+
+<pre><span class="c"># deploy/agentgateway/k8s-resources.yaml</span>
+<span class="k">spec</span>:
+  <span class="k">policies</span>:
+    <span class="k">mcp</span>:
+      <span class="k">authorization</span>:
+        <span class="k">action</span>: <span class="g">Deny</span>
+        <span class="k">policy</span>:
+          <span class="k">matchExpressions</span>:
+            - <span class="v">'mcp.tool.name == "execute_mimic_query"'</span></pre>
+
+  <p>Deny both hides the tool from discovery and rejects direct calls. Raw SQL now has exactly one
+  route, and it requires a human. The agent is unaffected — it reaches m3 as a Kubernetes Service,
+  not through the gateway.</p>
+
+  <div class="note stop">
+    <span class="lab">Gotcha that cost twenty minutes</span>
+    <p>This policy <strong>must</strong> sit at <code>spec.policies</code>. The identical block under
+    <code>targets[].static.policies</code> is accepted with no error, reports
+    <code>Accepted: True</code>, and is <strong>never enforced</strong> (agentgateway v1.0.1).</p>
+  </div>
+
+  <h3>Where approvals surface</h3>
+  <p>There is no global approvals inbox — a parked call lives in the chat session that created it. The
+  <code>context_id</code> is the session id and goes in the URL <strong>path</strong>:</p>
+<pre>http://localhost:8090/agents/kagent/clinical-ops-agent/chat/<span class="v">&lt;context_id&gt;</span>
+
+<span class="c"># a ?session= query parameter does NOT work — empty pane</span>
+<span class="c"># or just: make approve</span></pre>
+</div></section>
+
+<!-- ============ SUBSTRATE ============ -->
+<section id="substrate"><div class="wrap">
+  <p class="eyebrow">5</p>
+  <h2>Agent Substrate <span style="color:var(--dim);font-weight:400">— concept only</span></h2>
+
+  <div class="note stop">
+    <span class="lab">Not part of the demo</span>
+    <p>gVisor actors <strong>do not start on Kind under macOS</strong> (verified). Documented because
+    the idea is worth understanding, but excluded from the demo path and from <code>make create</code>.</p>
+  </div>
+
+  <p class="narrow">Agent sessions are bursty — seconds of thinking, then long stretches idle, often
+  waiting on exactly the human approval described above. Substrate checkpoints an idle agent's full
+  memory and filesystem through gVisor into object storage and rehydrates on demand: serverless
+  economics for stateful agents.</p>
+
+  <table>
+    <tr><th>Component</th><th>On Kind/macOS</th></tr>
+    <tr><td>Control plane (ate-api-server, ate-controller, atelet, rustfs, valkey)</td><td><span class="pill go">all Running</span></td></tr>
+    <tr><td><code>WorkerPool</code>, <code>ActorTemplate</code>, <code>SandboxAgent</code>, <code>AgentHarness</code></td><td><span class="pill go">reconcile fine</span></td></tr>
+    <tr><td><strong>gVisor actor start / checkpoint</strong></td><td><span class="pill no">fails</span></td></tr>
+  </table>
+
+<pre>ateom.RunWorkload:        rpc error: code = Internal desc = internal server error
+ateom.CheckpointWorkload: rpc error: code = Internal desc = internal server error</pre>
+
+  <div class="note good">
+    <span class="lab">The useful lesson</span>
+    <p>Because it was built opt-in and isolated, this failure cost nothing: during it, all five core
+    ArgoCD apps stayed <code>Synced/Healthy</code> and both agents stayed <code>Ready</code>. Keeping
+    experimental components off the critical path is a design decision, not luck.</p>
+  </div>
+</div></section>
+
+<!-- ============ FIELD NOTES ============ -->
+<section id="notes"><div class="wrap">
+  <p class="eyebrow">6</p>
+  <h2>Field notes</h2>
+  <p class="narrow">Real problems hit while building this. Documented because the error messages are
+  unhelpful and the fixes aren't obvious.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h4 style="margin-top:0">Go agents stuck in ImagePullBackOff</h4>
+      <p>kagent's default registry <code>cr.kagent.dev</code> doesn't publish the
+      <code>golang-adk</code> image, so every <code>runtime: go</code> agent fails to start.</p>
+      <p><strong>Fix:</strong> <code>registry: ghcr.io</code> in the chart values.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">Stable had no Approve button</h4>
+      <p>kagent 0.9.12 is the latest stable, but its UI has no working Approve/Reject — the HITL
+      rework landed after release. The runtime blocks correctly and the approval can never be granted.</p>
+      <p><strong>Fix:</strong> run <code>0.10.0-rc3</code>, verified with a clean build from zero.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">The agent self-censored</h4>
+      <p>Told about its own gates, the model would <em>ask permission in prose</em> without ever
+      calling the tool. Convincing to watch — but the task completed and nothing was pending to approve.</p>
+      <p><strong>Fix:</strong> instruct it never to self-police. Call the tool; let the platform intercept.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">Approved delete silently no-oped</h4>
+      <p>A single-namespace listing has no NAMESPACE column, so the agent inferred
+      <code>default</code> and wrote it into the delete. The approval was spent on a pod that didn't
+      exist — and the agent reported success.</p>
+      <p><strong>Fix:</strong> always pass the namespace explicitly; never claim success without a
+      read-only confirmation.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">Guessed table names</h4>
+      <p>MIMIC-IV tables here are module-prefixed (<code>hosp_*</code>, <code>icu_*</code>). The agent
+      guessed a bare <code>admissions</code> table — which failed <em>after</em> the operator had
+      already approved the query.</p>
+      <p><strong>Fix:</strong> check the schema first; it's ungated and instant.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">A2A calls timing out at 30s</h4>
+      <p>Multi-step agent work exceeded a hardcoded timeout; the agent finished but the caller saw
+      <code>context deadline exceeded</code>.</p>
+      <p><strong>Fix:</strong> upstreamed as
+      <a href="https://github.com/kagent-dev/kagent/pull/1617" target="_blank" rel="noopener">kagent PR #1617</a>.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ GLOSSARY ============ -->
+<section id="glossary"><div class="wrap">
+  <p class="eyebrow">7</p>
+  <h2>Glossary</h2>
+  <div class="grid">
+    <div>
+      <dl>
+        <dt>MCP</dt><dd>Model Context Protocol — a standard for how models discover and call tools.</dd>
+        <dt>MCP server</dt><dd>A process exposing tools over MCP. Three run here.</dd>
+        <dt>Federation</dt><dd>Several MCP servers behind one endpoint, tools prefixed by origin.</dd>
+        <dt>CRD</dt><dd>Custom Resource Definition — a user-defined Kubernetes object type.</dd>
+        <dt>Controller</dt><dd>A loop that watches objects and makes reality match their declared state.</dd>
+        <dt>GitOps</dt><dd>Git as source of truth; a controller continuously reconciles the cluster to it.</dd>
+      </dl>
+    </div>
+    <div>
+      <dl>
+        <dt>Agent CRD</dt><dd>kagent's object describing an agent: prompt, tools, approval gates.</dd>
+        <dt>ModelConfig</dt><dd>CRD holding the LLM provider and key reference, decoupled from the agent.</dd>
+        <dt>requireApproval</dt><dd>Field listing tools whose execution blocks pending human approval.</dd>
+        <dt>HITL</dt><dd>Human-in-the-Loop — a person must approve before the action proceeds.</dd>
+        <dt>A2A</dt><dd>Agent-to-Agent protocol, used when one agent invokes another.</dd>
+        <dt>MIMIC-IV</dt><dd>A de-identified public ICU dataset. This uses the ~100-patient demo subset.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:26px">
+    <p>Clinical results are from the MIMIC-IV <strong>demo subset</strong> — exploratory only, never a
+    basis for clinical decisions.</p>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>
+    <strong style="color:var(--text)">MCP Clinical Platform</strong> · Apache 2.0<br>
+    kagent · agentgateway · m3 · ArgoCD · MCP
+  </div>
+  <div style="text-align:right">
+    <a href="index.html">← Back to the demo</a> ·
+    <a href="https://github.com/papagala/mcp-clinical-platform">Source</a>
+  </div>
+</div></footer>
+
+</body>
+</html>
