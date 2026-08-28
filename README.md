@@ -17,9 +17,11 @@
 
 ## 📖 Start here → [**the guided walkthrough**](index.html)
 
-**[`index.html`](index.html)** is the front door: the concepts explained from first principles, a
-presenter console with links to every UI, and the demo as copy-pasteable prompts. Open it in a
-browser, or serve it:
+**[`index.html`](index.html)** is the front door — the story, two copy-pasteable prompts, and links
+to everything referenced. **[`deep-dive.html`](deep-dive.html)** has the technical detail: setup,
+Claude Code config, how the approval gate is enforced, and what broke along the way.
+
+Open either in a browser, or serve them:
 
 ```bash
 python3 -m http.server 8000   # → http://localhost:8000
