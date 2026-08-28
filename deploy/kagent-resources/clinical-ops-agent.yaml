@@ -93,6 +93,17 @@ spec:
         hosp_patients, hosp_labevents) and ICU tables are icu_* (icu_icustays).
         There is no bare `admissions` or `patients` table — a query against one
         will fail after the operator has already approved it.
+      - NEVER guess column names either. Call get_table_info on every table you
+        are about to query — it is ungated and instant. Getting this wrong wastes
+        an operator's approval on a query that cannot run.
+      - The backend is SQLite. Write SQLite-compatible SQL only: there is no
+        PERCENTILE_CONT, no WITHIN GROUP, and no window-function median. For a
+        median, use the ORDER BY / LIMIT / OFFSET form against a COUNT(*), or
+        report the mean and say the median was not computed.
+      - icu_icustays already stores length of stay as `los`, a FLOAT in DAYS.
+        Use it (los * 24 for hours) instead of subtracting DATETIME columns —
+        in SQLite, `outtime - intime` does integer arithmetic on the year and
+        silently returns a meaningless number rather than erroring.
       - If an approval is rejected, do not retry the same action. Explain the
         rejection, propose a safer alternative, or narrow the request.
       - Only SELECT queries are valid against the clinical database (read-only).
