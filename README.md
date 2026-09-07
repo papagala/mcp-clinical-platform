@@ -7,7 +7,7 @@
 [![kagent](https://img.shields.io/badge/kagent-v0.10.0--rc3-blue?style=for-the-badge)](https://kagent.dev/)
 [![kgateway](https://img.shields.io/badge/kgateway-v1.0.1-green?style=for-the-badge)](https://agentgateway.dev/)
 [![agentregistry](https://img.shields.io/badge/agentregistry-v0.3.3-orange?style=for-the-badge)](https://agentregistry.dev/)
-[![MCP](https://img.shields.io/badge/MCP-Streamable_HTTP-purple?style=for-the-badge)](https://modelcontextprotocol.io/)
+[![MCP](https://img.shields.io/badge/MCP-Streamable_HTTP_(stateless)-purple?style=for-the-badge)](https://modelcontextprotocol.io/)
 [![ArgoCD](https://img.shields.io/badge/ArgoCD-GitOps-EF7B4D?style=for-the-badge&logo=argo&logoColor=white)](https://argoproj.github.io/argo-cd/)
 [![Kind](https://img.shields.io/badge/Kind-K8s-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kind.sigs.k8s.io/)
 
@@ -151,6 +151,61 @@ Or just run [`/demo`](.claude/skills/demo/SKILL.md), which walks these beats wit
 If `/mcp` shows `✘ Failed to connect`, the port-forward is down — run `make ports` and hit **Reconnect** in `/mcp`. No session restart needed.
 
 > VS Code + Copilot still works via [`.vscode/mcp.json`](.vscode/mcp.json) and [`.github/agents/`](.github/agents/).
+
+### Two datasets — run `m3` **or** `m3-full`, not both
+
+MIMIC-IV is reachable two ways. They answer the same questions with wildly different numbers, so **decide which one you are on before you present.**
+
+| | `mcp-clinical-platform` (in-cluster `m3`) | `m3-full` (local) |
+|---|---|---|
+| Transport | HTTP via agentgateway `:4000` | stdio, `uv run … m3-mcp` |
+| Backend | SQLite, demo subset | DuckDB + Parquet, **full MIMIC-IV v2.2** |
+| Admissions | 275 | **431,231** |
+| Patients | ~100 | **299,712** |
+| `icu_chartevents` | — | **313,645,063 rows** |
+| Governed by kagent | **yes** — `execute_mimic_query` is approval-gated | **no** — runs ungated |
+| Needs the cluster | yes (`make ports`) | no |
+
+**Why this matters:** the tool names are distinct once qualified — `mcp__mcp-clinical-platform__m3_get_race_distribution` vs `mcp__m3-full__get_race_distribution` — but their *descriptions are identical*. An unqualified *"show me the race distribution"* is genuinely ambiguous, and you'll get `170` or `272,932` with no control over which.
+
+**Default to the cluster server.** It is the one the demo, the `/demo` skill and the governance story are built on. `m3-full` is for analysis that the 100-patient subset cannot support.
+
+Three ways to pick, in increasing strength:
+
+**1 — Name the server in the prompt.** No restart, works mid-demo:
+
+```
+› Using m3-full, compute mortality by peak first-day lactate band.
+› Ask the medical-data-agent for the race distribution.     # cluster, gated path
+```
+
+**2 — Toggle it off in `/mcp`.** Open `/mcp`, select the server, disable it. No file editing and no session restart — the fastest switch if you're already presenting. The choice is stored per-project in `~/.claude.json`, so it won't follow the repo.
+
+**3 — Hard-disable via settings.** `enabledMcpjsonServers` is an **allowlist**: when present, only the servers named in it load. Put it in `.claude/settings.local.json` (untracked, stays yours) and **restart Claude Code**:
+
+```jsonc
+// demo subset only — the safe default for presenting
+"enabledMcpjsonServers": ["mcp-clinical-platform"]
+// full dataset only
+"enabledMcpjsonServers": ["m3-full"]
+```
+
+There is also `disabledMcpjsonServers` (a blocklist), but if both keys are present the allowlist wins — so just use `enabledMcpjsonServers` and avoid the ambiguity.
+
+> **The subagents are already safe.** [`clinical-analyst`](.claude/agents/clinical-analyst.md) and [`clinical-ops`](.claude/agents/clinical-ops.md) pin their tools to `mcp__mcp-clinical-platform__*` in frontmatter, so they can only ever reach the cluster's demo subset. The ambiguity exists **only in the top-level conversation.**
+
+#### Setting up `m3-full`
+
+It is not part of `make create` and never will be — full MIMIC-IV is credentialed under the PhysioNet DUA and must not be redistributed. You supply your own copy. See [`m3`'s full-dataset setup](https://github.com/papagala/m3#option-b-local-full-dataset-duckdb--parquet).
+
+Two things that bite:
+
+- The `.duckdb` is **not self-contained**. It holds views whose SQL embeds absolute Parquet paths (`read_parquet('/abs/path/…')`). Move the Parquet tree and every query fails while `get_database_schema` still cheerfully lists all 31 views.
+- m3's query validator does a naive substring scan and rejects any SQL containing `ADMIN`, `KEY`, `AUTH` or `USER`. So `LIKE '%Administered%'` is **blocked** — it looks like the governance gate firing, but it isn't. Don't improvise such a query on stage.
+
+If your checkout lives elsewhere, edit the two `${HOME}/public-github/m3` paths in [`.mcp.json`](.mcp.json).
+
+> **On paths in `.mcp.json`** — it's committed, so never hardcode `/Users/<you>/…`; it leaks your username and breaks every other clone. `${HOME}` and `${VAR:-default}` both expand, in `command`, `args`, `env` and `url`. **Nesting does not** — `${M3_REPO:-${HOME}/path}` is passed through literally and the server fails to connect. Verify any change with `claude mcp list` before you rely on it.
 
 ---
 
@@ -336,7 +391,7 @@ leaving templates at `ActorTemplateNotReady: golden snapshot is not ready`. Runn
 mcp-clinical-platform/
 ├── Makefile                     # create / ports / demo / hitl / substrate
 ├── CLAUDE.md                    # project context for Claude Code
-├── .mcp.json                    # Claude Code → federated gateway
+├── .mcp.json                    # Claude Code → federated gateway (+ optional m3-full)
 ├── .claude/
 │   ├── agents/                  # clinical-analyst, clinical-ops subagents
 │   ├── skills/demo/             # /demo — walks the three layers
@@ -402,9 +457,11 @@ spec:
 | [agentregistry](https://agentregistry.dev) | v0.3.3 | MCP server/agent/skill registry | — |
 | [ArgoCD](https://argoproj.github.io/argo-cd/) | stable | GitOps continuous delivery | CNCF |
 | [Gateway API](https://gateway-api.sigs.k8s.io/) | v1.5.0 | K8s-native routing | K8s SIG |
-| [MCP](https://modelcontextprotocol.io/) | Streamable HTTP | Model Context Protocol | Anthropic |
+| [MCP](https://modelcontextprotocol.io/) | Streamable HTTP, `2025-06-18`, stateless | Model Context Protocol | Anthropic |
 
 > agentgateway and agentregistry are pinned deliberately. Newer releases exist, but federation depends on the `AgentgatewayBackend`/`HTTPRoute` shape in this repo — verify federation end to end before bumping.
+
+> **On the protocol revision.** The `/mcp` endpoint negotiates `2025-06-18`, two revisions behind the current `2026-07-28`. That is set by agentgateway v1.0.1 (rmcp 0.16), not by anything in this repo — and bumping it alone would not help, since kagent tops out at `2025-11-25` and agentregistry at `2025-06-18`. *Stateless* is a separate axis and this platform is stateless today: no `Mcp-Session-Id`, no `initialize` required, any replica answers any request. The `2026-07-28` stateless **core** — no handshake, `server/discover`, per-request `_meta` — is a wire-format change none of the three upstreams implement yet.
 
 ## References
 

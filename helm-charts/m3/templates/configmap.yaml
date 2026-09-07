@@ -13,3 +13,4 @@ data:
   MCP_HOST: {{ .Values.env.mcpHost | quote }}
   MCP_PORT: {{ .Values.env.mcpPort | quote }}
   MCP_PATH: {{ .Values.env.mcpPath | quote }}
+  FASTMCP_STATELESS_HTTP: {{ .Values.env.statelessHttp | quote }}

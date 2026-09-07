@@ -58,6 +58,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.configMaps.name }}
                   key: MCP_PATH
+            - name: FASTMCP_STATELESS_HTTP
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.configMaps.name }}
+                  key: FASTMCP_STATELESS_HTTP
           {{- if .Values.persistence.enabled }}
           volumeMounts:
             - name: m3-data

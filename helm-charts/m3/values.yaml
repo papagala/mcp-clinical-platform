@@ -34,6 +34,11 @@ env:
   mcpHost: "0.0.0.0"
   mcpPort: "3000"
   mcpPath: /mcp
+  # Drop the Mcp-Session-Id so any replica can serve any request. Read by
+  # FastMCP as a global setting, so this needs no change to the m3 source and
+  # no image rebuild. Required once the gateway runs sessionRouting: Stateless
+  # — a stateless edge in front of a stateful m3 returns empty 200s.
+  statelessHttp: "true"
 
 # Secrets (for BigQuery and other sensitive data)
 secrets:

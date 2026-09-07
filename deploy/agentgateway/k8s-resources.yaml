@@ -44,6 +44,15 @@ spec:
           matchExpressions:
             - 'mcp.tool.name == "execute_mimic_query"'
   mcp:
+    # No protocol-level session: the gateway stops minting Mcp-Session-Id and
+    # every POST stands alone, so any replica can answer any request. This is
+    # the deployment-level half of "stateless" — it does NOT change the
+    # negotiated spec revision, which rmcp 0.16 caps at 2025-06-18 in v1.0.1.
+    #
+    # Trade-off: Stateless disables the GET/DELETE endpoints, so there is no
+    # downstream SSE stream for server-initiated messages. Nothing here needs
+    # one — no sampling, no elicitation, no resource subscriptions.
+    sessionRouting: Stateless
     failureMode: FailOpen
     targets:
       - name: kagent
