@@ -578,6 +578,52 @@ a{color:var(--accent);text-decoration:none}
 
 <!-- 7 -->
 <section>
+  <p class="eyebrow">The transport</p>
+  <h2>Any instance can answer</h2>
+  <p class="lead">Two transports: <b>stdio</b> for local processes, <b>Streamable HTTP</b> for
+  everything else. Drop the session and an MCP server stops being a stateful connection you have to
+  keep alive — it becomes an ordinary HTTP service.</p>
+  <div class="body">
+    <div class="grid g2">
+      <div>
+        <p class="codelabel">Stateful — the old default</p>
+        <pre><span class="c">POST /mcp</span>  initialize
+<span class="k">200</span>  Mcp-Session-Id: E76CY+/nu+zoYeI1ht…
+
+<span class="c">POST /mcp</span>  tools/list   <span class="c"># no session</span>
+<span class="k">422</span>  session header is required
+
+<span class="c"># the session lives in one pod's memory.</span>
+<span class="c"># scale to 2 and half the calls fail.</span></pre>
+      </div>
+      <div>
+        <p class="codelabel">Stateless — this platform today</p>
+        <pre><span class="c">POST /mcp</span>  tools/list   <span class="c"># cold. no init.</span>
+<span class="k">200</span>  21 tools
+
+<span class="c">POST /mcp</span>  tools/call m3_get_race_…
+<span class="k">200</span>  WHITE 170 · BLACK 48 · UNKNOWN 17
+
+<span class="c"># no session header at all.</span>
+<span class="c"># scale to 2 and both replicas serve.</span></pre>
+      </div>
+    </div>
+    <div class="strip acc">
+      <div><b>Nothing to pin.</b> No sticky sessions, no affinity rules, no session store to replicate.</div>
+      <div><b>Nothing to expire.</b> A rollout or a crash costs one request, not a reconnect.</div>
+      <div><b>Ordinary HTTP.</b> The load balancers and retries you already run just work.</div>
+    </div>
+    <div class="callout" style="margin-top:22px">
+      The trap: a stateless gateway in front of a <b>stateful</b> server returns
+      <code style="font-family:var(--mono);font-size:13.5px">200 OK</code> with an <b>empty body</b> —
+      it reads as a hung tool, not a misconfiguration. The edge and every server behind it have to
+      move together.
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section>
   <p class="eyebrow">Reality check</p>
   <h2>Laptop is easy. Production is not.</h2>
   <div class="body">
